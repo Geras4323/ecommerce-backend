@@ -1,0 +1,16 @@
+services:
+  db:
+    image: mysql
+    container_name: local_mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: ecommerce
+      MYSQL_USER: geras
+      MYSQL_PASSWORD: admin123
+      MYSQL_ROOT_PASSWORD: pass
+    ports:
+      - 3305:3306
+    expose:
+      - 3306
+    volumes:
+      - ./.database:/var/lib/mysql
