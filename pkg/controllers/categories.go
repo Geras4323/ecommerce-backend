@@ -41,8 +41,8 @@ func CreateCategory(c echo.Context) error {
 	c.Bind(&body)
 
 	category := models.Category{
+		Code: body.Code.String,
 		Name: body.Name,
-		// Active: body.Active,
 	}
 
 	if err := database.Gorm.Create(&category).Error; err != nil {
@@ -113,7 +113,7 @@ func UpdateCategory(c echo.Context) error {
 	}
 
 	oldCategory.Name = newCategory.Name
-	// oldCategory.Active = newCategory.Active
+	oldCategory.Code = newCategory.Code
 
 	if err := database.Gorm.Where("id = ?", categoryID).Save(&oldCategory).Error; err != nil {
 		return c.String(http.StatusConflict, err.Error())

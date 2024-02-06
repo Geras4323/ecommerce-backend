@@ -5,6 +5,7 @@ import "gopkg.in/guregu/null.v4"
 type Category struct {
 	Model
 
+	Code string `json:"code"`
 	Name string `json:"name"`
 
 	ImageURL  null.String `json:"image"`
@@ -14,9 +15,11 @@ type Category struct {
 }
 
 type CreateCategory struct {
-	Name string `json:"name"`
+	Code null.String `json:"code"`
+	Name string      `json:"name"`
 }
 
 type UpdateCategory struct {
+	Code string `json:"code,omitempty"`
 	Name string `json:"name,omitempty"`
 }
