@@ -3,6 +3,7 @@ package models
 type Product struct {
 	Model
 
+	Code          string         `json:"code"`
 	Name          string         `json:"name"`
 	Description   string         `json:"description"`
 	Price         float32        `json:"price"`
@@ -20,12 +21,14 @@ type Product struct {
 type CreateProduct struct {
 	CategoryID  uint    `json:"categoryID"`
 	SupplierID  uint    `json:"supplierID"`
+	Code        string  `json:"code"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float32 `json:"price"`
 }
 
 type UpdateProduct struct {
+	Code        string  `json:"code"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float32 `json:"price"`
