@@ -28,6 +28,8 @@ type CreateProduct struct {
 }
 
 type UpdateProduct struct {
+	CategoryID  uint    `json:"categoryID"`
+	SupplierID  uint    `json:"supplierID"`
 	Code        string  `json:"code"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`

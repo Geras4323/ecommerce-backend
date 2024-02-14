@@ -16,7 +16,7 @@ import (
 // GET /api/v1/products //////////////////////////////////////////////////////
 func GetProducts(c echo.Context) error {
 	products := make([]models.Product, 0)
-	if err := database.Gorm.Preload("Images").Find(&products).Error; err != nil {
+	if err := database.Gorm.Preload("Images").Order("created_at DESC").Find(&products).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
@@ -111,7 +111,7 @@ func UpdateProduct(c echo.Context) error {
 	c.Bind(&newProduct)
 
 	var oldProduct models.Product
-	if err := database.Gorm.First(&oldProduct).Error; err != nil {
+	if err := database.Gorm.First(&oldProduct, productID).Error; err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
@@ -119,6 +119,8 @@ func UpdateProduct(c echo.Context) error {
 	oldProduct.Name = newProduct.Name
 	oldProduct.Description = newProduct.Description
 	oldProduct.Price = newProduct.Price
+	oldProduct.CategoryID = newProduct.CategoryID
+	oldProduct.SupplierID = newProduct.SupplierID
 
 	if err := database.Gorm.Where("id = ?", productID).Save(&oldProduct).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
@@ -138,7 +140,7 @@ func DeleteProduct(c echo.Context) error {
 	productID := c.Param("id")
 
 	var product models.Product
-	if err := database.Gorm.First(&product).Error; err != nil {
+	if err := database.Gorm.First(&product, productID).Error; err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
