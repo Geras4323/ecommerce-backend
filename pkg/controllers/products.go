@@ -10,7 +10,6 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
 )
 
 // GET /api/v1/products //////////////////////////////////////////////////////
@@ -37,30 +36,48 @@ func GetProduct(c echo.Context) error {
 
 // POST /api/v1/products //////////////////////////////////////////////////////
 func CreateProduct(c echo.Context) error {
-	body := []models.CreateProduct{}
+	// body := []models.CreateProduct{}
+	// c.Bind(&body)
+
+	// txError := database.Gorm.Transaction(func(tx *gorm.DB) error {
+	// 	for _, p := range body {
+	// 		product := models.Product{
+	// 			CategoryID:  p.CategoryID,
+	// 			SupplierID:  p.SupplierID,
+	// 			Code:        p.Code,
+	// 			Name:        p.Name,
+	// 			Description: p.Description,
+	// 			Price:       p.Price,
+	// 		}
+	// 		if err := database.Gorm.Create(&product).Error; err != nil {
+	// 			return c.String(http.StatusInternalServerError, err.Error())
+	// 		}
+	// 	}
+	// 	return nil
+	// })
+
+	// if txError != nil {
+	// 	return txError
+	// }
+	// return c.NoContent(http.StatusOK)
+
+	body := models.CreateProduct{}
 	c.Bind(&body)
 
-	txError := database.Gorm.Transaction(func(tx *gorm.DB) error {
-		for _, p := range body {
-			product := models.Product{
-				CategoryID:  p.CategoryID,
-				SupplierID:  p.SupplierID,
-				Code:        p.Code,
-				Name:        p.Name,
-				Description: p.Description,
-				Price:       p.Price,
-			}
-			if err := database.Gorm.Create(&product).Error; err != nil {
-				return c.String(http.StatusInternalServerError, err.Error())
-			}
-		}
-		return nil
-	})
-
-	if txError != nil {
-		return txError
+	product := models.Product{
+		CategoryID:  body.CategoryID,
+		SupplierID:  body.SupplierID,
+		Code:        body.Code,
+		Name:        body.Name,
+		Description: body.Description,
+		Price:       body.Price,
 	}
-	return c.NoContent(http.StatusOK)
+
+	if err := database.Gorm.Create(&product).Error; err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, product)
 }
 
 // POST /api/v1/products/:id/image
@@ -87,6 +104,22 @@ func UploadProductImage(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, upErr.Error())
 	}
 
+	// Delete all old images of that product
+	productImages := make([]models.Image, 0)
+	if err := database.Gorm.Where("product_id = ?", productID).Find(&productImages).Error; err != nil {
+		return c.JSON(http.StatusForbidden, err.Error())
+	}
+
+	for _, pI := range productImages {
+		_, delErr := cloud.DeleteImage(pI.Name)
+		if delErr != nil {
+			return c.JSON(http.StatusInternalServerError, delErr.Error())
+		}
+		if err := database.Gorm.Unscoped().Delete(&models.Image{}, &pI.ID).Error; err != nil {
+			return c.JSON(http.StatusForbidden, err.Error())
+		}
+	}
+
 	// Save new image to DB
 	var newImage models.Image
 
@@ -100,7 +133,7 @@ func UploadProductImage(c echo.Context) error {
 		return c.String(http.StatusConflict, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, upRes)
+	return c.JSON(http.StatusOK, map[string]any{"id": newImage.ID, "cloud": upRes})
 }
 
 // PUT /api/v1/products/:id //////////////////////////////////////////////////////
@@ -129,12 +162,6 @@ func UpdateProduct(c echo.Context) error {
 	return c.JSON(http.StatusOK, oldProduct)
 }
 
-// PATCH /api/v1/products/:id
-// func PatchProduct(c echo.Context) error {
-
-// 	return nil
-// }
-
 // DELETE /api/v1/products/:id //////////////////////////////////////////////////////
 func DeleteProduct(c echo.Context) error {
 	productID := c.Param("id")
@@ -148,5 +175,46 @@ func DeleteProduct(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
+	// Borrar las imagenes del producto borrado
+	productImages := make([]models.Image, 0)
+	if err := database.Gorm.Where("product_id = ?", productID).Find(&productImages).Error; err != nil {
+		return c.JSON(http.StatusForbidden, err.Error())
+	}
+
+	for _, pI := range productImages {
+		_, delErr := cloud.DeleteImage(pI.Name)
+		if delErr != nil {
+			return c.JSON(http.StatusInternalServerError, delErr.Error())
+		}
+		if err := database.Gorm.Unscoped().Delete(&models.Image{}, &pI.ID).Error; err != nil {
+			return c.JSON(http.StatusForbidden, err.Error())
+		}
+	}
+
 	return c.JSON(http.StatusOK, map[string]any{"id": productID, "message": "Product deleted successfully"})
+}
+
+func DeleteProductImage(c echo.Context) error {
+	productID := c.Param("id")
+	var product models.Product
+	if err := database.Gorm.Find(&product, productID).Error; err != nil {
+		return c.JSON(http.StatusNotFound, err.Error())
+	}
+
+	productImages := make([]models.Image, 0)
+	if err := database.Gorm.Where("product_id = ?", productID).Find(&productImages).Error; err != nil {
+		return c.JSON(http.StatusForbidden, err.Error())
+	}
+
+	for _, pI := range productImages {
+		_, delErr := cloud.DeleteImage(pI.Name)
+		if delErr != nil {
+			return c.JSON(http.StatusInternalServerError, delErr.Error())
+		}
+		if err := database.Gorm.Unscoped().Delete(&models.Image{}, &pI.ID).Error; err != nil {
+			return c.JSON(http.StatusForbidden, err.Error())
+		}
+	}
+
+	return c.JSON(http.StatusOK, "Images deleted successfully")
 }

@@ -10,9 +10,11 @@ func Products(g *echo.Group) {
 	g.GET("/:id", controllers.GetProduct)
 
 	g.POST("", controllers.CreateProduct)
+	g.POST("/:id/image", controllers.UploadProductImage)
 
 	g.PUT("/:id", controllers.UpdateProduct)
 	// g.PATCH("/:id", controllers.PatchProduct)
 
 	g.DELETE("/:id", controllers.DeleteProduct)
+	g.DELETE("/:id/image", controllers.DeleteProductImage)
 }
