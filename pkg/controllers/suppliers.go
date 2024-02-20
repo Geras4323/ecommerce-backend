@@ -12,7 +12,7 @@ import (
 func GetSuppliers(c echo.Context) error {
 	suppiers := make([]models.Supplier, 0)
 
-	if err := database.Gorm.Find(&suppiers).Error; err != nil {
+	if err := database.Gorm.Order("created_at DESC").Find(&suppiers).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
@@ -68,12 +68,6 @@ func UpdateSupplier(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, oldSupplier)
 }
-
-// PATCH /api/v1/suppliers/:id
-// func PatchSupplier(c echo.Context) error {
-
-// 	return nil
-// }
 
 // DELETE /api/v1/suppliers/:id //////////////////////////////////////////////////////
 func DeleteSupplier(c echo.Context) error {

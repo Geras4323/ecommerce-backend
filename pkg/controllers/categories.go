@@ -16,7 +16,7 @@ import (
 func GetCategories(c echo.Context) error {
 	categories := make([]models.Category, 0)
 
-	if err := database.Gorm.Find(&categories).Error; err != nil {
+	if err := database.Gorm.Order("created_at DESC").Find(&categories).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
@@ -122,12 +122,6 @@ func UpdateCategory(c echo.Context) error {
 	return c.JSON(http.StatusOK, oldCategory)
 }
 
-// PATCH /api/v1/categories/:id
-// func PatchCategory(c echo.Context) error {
-
-// 	return nil
-// }
-
 // DELETE /api/v1/categories/:id
 func DeleteCategory(c echo.Context) error {
 	categoryID := c.Param("id")
@@ -139,6 +133,11 @@ func DeleteCategory(c echo.Context) error {
 
 	if err := database.Gorm.Delete(&category, categoryID).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	_, err := cloud.DeleteImage(category.ImageName.String)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{"id": categoryID, "message": "Category deleted successfully"})
