@@ -33,6 +33,7 @@ func ConnectGorm() {
 		&models.Category{},
 		&models.Supplier{},
 		&models.User{},
+		&models.CartItem{},
 		&models.Product{},
 		&models.Image{},
 		&models.Order{},

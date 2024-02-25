@@ -8,6 +8,7 @@ func SetupRoutes(app *echo.Echo) {
 	Categories(api.Group("/categories"))
 	Suppliers(api.Group("/suppliers"))
 	Users(api.Group("/users"))
+	Cart(api.Group("/cart"))
 	Auth(api.Group("/auth"))
 	Products(api.Group("/products"))
 	Orders(api.Group("/orders"))
