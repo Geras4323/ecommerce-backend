@@ -14,8 +14,7 @@ type Product struct {
 	CategoryID uint     `json:"categoryID"`
 	Category   Category `json:"-" gorm:"foreignKey:CategoryID"`
 
-	SupplierID uint     `json:"supplierID"`
-	Supplier   Supplier `json:"-" gorm:"foreignKey:SupplierID"`
+	SupplierID uint `json:"supplierID"`
 }
 
 type CreateProduct struct {
