@@ -2,12 +2,15 @@ package controllers
 
 import (
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
 // GET /api/v1/orders //////////////////////////////////////////////////////
@@ -50,16 +53,60 @@ func GetOrder(c echo.Context) error {
 
 // POST /api/v1/orders //////////////////////////////////////////////////////
 func CreateOrder(c echo.Context) error {
-	body := models.CreateOrder{}
-	c.Bind(&body)
+	items := []models.OrderProduct{}
+	c.Bind(&items)
 
-	order := models.Order{
-		UserID: body.UserID,
-		Total:  body.Total,
+	if len(items) == 0 {
+		return c.String(http.StatusForbidden, "No products in order")
 	}
 
-	if err := database.Gorm.Create(&order).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+	userID := c.Param("userID")
+
+	if err := database.Gorm.First(&models.User{}, userID).Error; err != nil {
+		return c.String(http.StatusNotFound, "User not found")
+	}
+	numUserID, _ := strconv.Atoi(userID)
+
+	var total float64 = 0
+	for _, i := range items {
+		var prod models.Product
+		if err := database.Gorm.First(&prod, i.ProductID).Error; err != nil {
+			return c.String(http.StatusNotFound, fmt.Sprintf("Product %d not found", i.ProductID))
+		}
+		total += float64(i.Quantity) * prod.Price
+	}
+
+	order := models.Order{
+		UserID: uint(numUserID),
+		Total:  math.Round(total*100) / 100,
+	}
+
+	// BEGIN TRANSACTION
+	txError := database.Gorm.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&order).Error; err != nil {
+			return c.String(http.StatusInternalServerError, "Could not create order")
+		}
+
+		for _, i := range items {
+			var item models.OrderProduct
+			item.OrderID = order.ID
+			item.ProductID = i.ProductID
+			item.Quantity = i.Quantity
+			if err := tx.Create(&item).Error; err != nil {
+				return c.String(http.StatusInternalServerError, fmt.Sprintf("Could not add item %d to order", item.ID))
+			}
+		}
+
+		return nil
+	})
+
+	if txError != nil {
+		return txError
+	}
+
+	// CLEAR SHOPPING CART
+	if err := database.Gorm.Where("user_id = ?", userID).Unscoped().Delete(&models.CartItem{}).Error; err != nil {
+		return c.String(http.StatusInternalServerError, "Could not clear cart")
 	}
 
 	return c.JSON(http.StatusCreated, order)
@@ -89,7 +136,7 @@ func UpdateOrder(c echo.Context) error {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
-	oldOrder.UserID = newOrder.UserID
+	// oldOrder.UserID = newOrder.UserID
 	oldOrder.Total = newOrder.Total
 
 	if err := database.Gorm.Where("id = ?", orderID).Save(&oldOrder).Error; err != nil {

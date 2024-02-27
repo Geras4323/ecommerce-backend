@@ -3,11 +3,11 @@ package models
 type Product struct {
 	Model
 
-	Code          string         `json:"code"`
-	Name          string         `json:"name"`
-	Description   string         `json:"description"`
-	Price         float32        `json:"price"`
-	OrderProducts []OrderProduct `json:"orderProducts"`
+	Code        string  `json:"code"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	// OrderProducts []OrderProduct `json:"orderProducts"`
 
 	Images []Image `json:"images"`
 
@@ -23,7 +23,7 @@ type CreateProduct struct {
 	Code        string  `json:"code"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
-	Price       float32 `json:"price"`
+	Price       float64 `json:"price"`
 }
 
 type UpdateProduct struct {
@@ -32,7 +32,7 @@ type UpdateProduct struct {
 	Code        string  `json:"code"`
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
-	Price       float32 `json:"price"`
+	Price       float64 `json:"price"`
 }
 
 type Image struct {

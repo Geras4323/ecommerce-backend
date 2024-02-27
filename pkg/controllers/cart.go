@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
@@ -24,19 +25,23 @@ func GetCartItems(c echo.Context) error {
 }
 
 func CrerateCartItem(c echo.Context) error {
-	body := models.CreateCartItem{}
-	c.Bind(&body)
+	userID := c.Param("userID")
 
-	if err := database.Gorm.First(&models.User{}, body.UserID).Error; err != nil {
+	if err := database.Gorm.First(&models.User{}, userID).Error; err != nil {
 		return c.String(http.StatusNotFound, "User not found")
 	}
+
+	body := models.CreateCartItem{}
+	c.Bind(&body)
 
 	if err := database.Gorm.First(&models.Product{}, body.ProductID).Error; err != nil {
 		return c.String(http.StatusNotFound, "Product not found")
 	}
 
+	numUserID, _ := strconv.Atoi(userID)
+
 	cartItem := models.CartItem{
-		UserID:    body.UserID,
+		UserID:    uint(numUserID),
 		ProductID: body.ProductID,
 		Quantity:  body.Quantity,
 	}

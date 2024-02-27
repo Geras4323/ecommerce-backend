@@ -13,8 +13,8 @@ type CartItem struct {
 }
 
 type CreateCartItem struct {
-	Quantity  uint `json:"quantity"`
-	UserID    uint `json:"userID"`
+	Quantity uint `json:"quantity"`
+	// UserID    uint `json:"userID"`
 	ProductID uint `json:"productID"`
 }
 

@@ -8,7 +8,7 @@ import (
 func Cart(g *echo.Group) {
 	g.GET("/:userID", controllers.GetCartItems)
 
-	g.POST("", controllers.CrerateCartItem)
+	g.POST("/:userID", controllers.CrerateCartItem)
 
 	g.PATCH("/:id", controllers.UpdateCartItem)
 

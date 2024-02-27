@@ -18,11 +18,10 @@ func Orders(g *echo.Group) {
 	g.GET("/my-orders", controllers.GetOrdersByUser, echojwt.WithConfig(config))
 	g.GET("/:id", controllers.GetOrder)
 
-	g.POST("", controllers.CreateOrder)
-	g.POST("/add-product", controllers.AddProduct)
+	g.POST("/user/:userID", controllers.CreateOrder)
+	g.POST("/:id/add-product", controllers.AddProduct)
 
-	g.PUT("/:id", controllers.UpdateOrder)
-	// g.PATCH("/:id", controllers.PatchOrder)
+	g.PATCH("/:id", controllers.UpdateOrder)
 
 	g.DELETE("/:id", controllers.DeleteOrder)
 	g.DELETE("/:id/remove-product/:productID", controllers.RemoveProduct)
