@@ -7,7 +7,6 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/geras4323/ecommerce-backend/pkg/utils"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -19,17 +18,27 @@ type AuthContext struct {
 
 func CheckRole(r ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			user := c.Get("user").(*jwt.Token)
-			claims := user.Claims.(*JwtLoginClaims)
-			role := claims.Role
+		return func(baseContext echo.Context) error {
+			c := baseContext.(*AuthContext)
 
-			if validRole := utils.CheckIfInArray(r, role); validRole {
+			if validRole := utils.CheckIfInArray(r, c.User.Role); validRole {
 				return next(c)
 			}
 
 			return c.String(http.StatusUnauthorized, "Unauthorized role")
 		}
+	}
+}
+
+func CheckAdmin(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(baseContext echo.Context) error {
+		c := baseContext.(*AuthContext)
+
+		if c.User.Role == "admin" {
+			return next(c)
+		}
+
+		return c.String(http.StatusUnauthorized, "Unauthorized role - Admin needed")
 	}
 }
 

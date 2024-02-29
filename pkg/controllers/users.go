@@ -12,7 +12,7 @@ import (
 // GET /api/v1/users //////////////////////////////////////////////////////
 func GetUsers(c echo.Context) error {
 	users := make([]models.User, 0)
-	if err := database.Gorm.Preload("Orders").Find(&users).Error; err != nil {
+	if err := database.Gorm.Find(&users).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
@@ -24,7 +24,7 @@ func GetUser(c echo.Context) error {
 	userID := c.Param("id")
 
 	var user models.User
-	if err := database.Gorm.Preload("Orders").First(&user, userID).Error; err != nil {
+	if err := database.Gorm.First(&user, userID).Error; err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
@@ -75,7 +75,6 @@ func UpdateUser(c echo.Context) error {
 	oldUser.Last_name = newUser.Last_name
 	oldUser.Phone = newUser.Phone
 	oldUser.Role = newUser.Role
-	// oldUser.Active = newUser.Active
 
 	if err := database.Gorm.Where("id = ?", userID).Save(&oldUser).Error; err != nil {
 		return c.String(http.StatusConflict, err.Error())
@@ -83,12 +82,6 @@ func UpdateUser(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, oldUser)
 }
-
-// PATCH /api/v1/users/:id
-// func PatchUser(c echo.Context) error {
-
-// 	return nil
-// }
 
 // DELETE /api/v1/users/:id //////////////////////////////////////////////////////
 func DeleteUser(c echo.Context) error {

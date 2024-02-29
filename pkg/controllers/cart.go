@@ -2,32 +2,34 @@ package controllers
 
 import (
 	"net/http"
-	"strconv"
 
+	"github.com/geras4323/ecommerce-backend/pkg/auth"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/labstack/echo/v4"
 )
 
-func GetCartItems(c echo.Context) error {
-	userID := c.Param("userID")
+// GET /api/v1/cart //////////////////////////////////////////////////////////////////////////
+func GetCartItems(baseContext echo.Context) error {
+	c := baseContext.(*auth.AuthContext)
 
-	if err := database.Gorm.First(&models.User{}, userID).Error; err != nil {
+	if err := database.Gorm.First(&models.User{}, c.User.ID).Error; err != nil {
 		return c.String(http.StatusNotFound, "User not found")
 	}
 
 	cartItems := make([]models.CartItem, 0)
-	if err := database.Gorm.Where("user_id = ?", userID).Find(&cartItems).Error; err != nil {
+	if err := database.Gorm.Where("user_id = ?", c.User.ID).Find(&cartItems).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, cartItems)
 }
 
-func CrerateCartItem(c echo.Context) error {
-	userID := c.Param("userID")
+// POST /api/v1/cart /////////////////////////////////////////////////////////////////////////
+func CrerateCartItem(baseContext echo.Context) error {
+	c := baseContext.(*auth.AuthContext)
 
-	if err := database.Gorm.First(&models.User{}, userID).Error; err != nil {
+	if err := database.Gorm.First(&models.User{}, c.User.ID).Error; err != nil {
 		return c.String(http.StatusNotFound, "User not found")
 	}
 
@@ -38,10 +40,8 @@ func CrerateCartItem(c echo.Context) error {
 		return c.String(http.StatusNotFound, "Product not found")
 	}
 
-	numUserID, _ := strconv.Atoi(userID)
-
 	cartItem := models.CartItem{
-		UserID:    uint(numUserID),
+		UserID:    c.User.ID,
 		ProductID: body.ProductID,
 		Quantity:  body.Quantity,
 	}

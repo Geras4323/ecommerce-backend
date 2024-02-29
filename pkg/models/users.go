@@ -17,8 +17,7 @@ type User struct {
 	// UUID in case of needing more security
 	// SecurityUUID  string      `json:"-"`
 
-	Orders []Order `json:"orders"`
-	// Active			bool				`json:"active" gorm:"default:true"`
+	// Orders []Order `json:"orders"`
 }
 
 type UpdateUser struct {

@@ -6,7 +6,9 @@ type Order struct {
 	UserID uint    `json:"userID"`
 	Total  float64 `json:"total"`
 	// Payments      []Payment      `json:"payments"`
-	// OrderProducts []OrderProduct `json:"orderProducts"`
+	OrderProducts []OrderProduct `json:"orderProducts"`
+
+	Products uint `json:"products" gorm:"-:migration;<-:false"` // llenar con SQL de DBeaver
 }
 
 type CreateOrder struct {
