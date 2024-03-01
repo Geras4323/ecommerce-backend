@@ -7,7 +7,7 @@ import (
 )
 
 func Categories(g *echo.Group) {
-	g.GET("", controllers.GetCategories, auth.WithAuth)
+	g.GET("", controllers.GetCategories)
 	g.GET("/:id", controllers.GetCategory, auth.WithAuth)
 
 	g.POST("", controllers.CreateCategory, auth.WithAuth, auth.CheckAdmin)

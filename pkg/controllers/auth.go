@@ -59,7 +59,6 @@ func Login(c echo.Context) error {
 	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
 	c.SetCookie(cookie)
 
-	// return c.JSON(http.StatusOK, map[string]any{"user": user, "token": signedToken})
 	return c.JSON(http.StatusOK, user)
 }
 

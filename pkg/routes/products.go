@@ -7,7 +7,7 @@ import (
 )
 
 func Products(g *echo.Group) {
-	g.GET("", controllers.GetProducts, auth.WithAuth)
+	g.GET("", controllers.GetProducts)
 	g.GET("/:id", controllers.GetProduct, auth.WithAuth, auth.CheckAdmin)
 
 	g.POST("", controllers.CreateProduct, auth.WithAuth, auth.CheckAdmin)
