@@ -63,6 +63,19 @@ func Login(c echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
+// POST /api/v1/auth/logout
+func Logout(c echo.Context) error {
+	cookie := new(http.Cookie)
+	cookie.Name = "ec_session"
+	cookie.Path = "/"
+	cookie.Value = ""
+	cookie.MaxAge = -1
+	cookie.HttpOnly = true
+	c.SetCookie(cookie)
+
+	return c.NoContent(http.StatusOK)
+}
+
 // POST /api/v1/auth/recovery
 func RecoverPassword(c echo.Context) error {
 	var body models.RecoverPassword
