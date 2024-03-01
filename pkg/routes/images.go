@@ -7,5 +7,7 @@ import (
 )
 
 func Images(g *echo.Group) {
+	g.GET("", controllers.GetImages, auth.WithAuth)
+
 	g.POST("/upload", controllers.UploadImage, auth.WithAuth, auth.CheckAdmin)
 }

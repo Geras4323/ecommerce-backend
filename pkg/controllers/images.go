@@ -9,12 +9,25 @@ import (
 
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
+	"github.com/geras4323/ecommerce-backend/pkg/database"
+	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
 func toBase64(b []byte) string {
 	return base64.StdEncoding.EncodeToString(b)
+}
+
+// GET /images
+func GetImages(c echo.Context) error {
+	images := make([]models.Image, 0)
+
+	if err := database.Gorm.Find(&images).Error; err != nil {
+		return c.String(http.StatusNotFound, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, images)
 }
 
 // POST /images/upload
