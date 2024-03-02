@@ -14,7 +14,6 @@ func Products(g *echo.Group) {
 	g.POST("/:id/image", controllers.UploadProductImage, auth.WithAuth, auth.CheckAdmin)
 
 	g.PUT("/:id", controllers.UpdateProduct, auth.WithAuth, auth.CheckAdmin)
-	// g.PATCH("/:id", controllers.PatchProduct)
 
 	g.DELETE("/:id", controllers.DeleteProduct, auth.WithAuth, auth.CheckAdmin)
 	g.DELETE("/:id/image", controllers.DeleteProductImage, auth.WithAuth, auth.CheckAdmin)

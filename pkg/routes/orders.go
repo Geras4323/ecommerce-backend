@@ -7,9 +7,6 @@ import (
 )
 
 func Orders(g *echo.Group) {
-	// controller, require user to be logged, check role
-	// g.GET("", controllers.GetOrders, echojwt.WithConfig(config), auth.CheckRole("admin", "customer"))
-
 	g.GET("", controllers.GetOrders, auth.WithAuth, auth.CheckAdmin)
 	g.GET("/my-orders", controllers.GetOrdersByUser, auth.WithAuth)
 	g.GET("/:id", controllers.GetOrder, auth.WithAuth)

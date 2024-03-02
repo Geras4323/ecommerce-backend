@@ -13,7 +13,6 @@ func Suppliers(g *echo.Group) {
 	g.POST("", controllers.CreateSupplier, auth.WithAuth, auth.CheckAdmin)
 
 	g.PUT("/:id", controllers.UpdateSupplier, auth.WithAuth, auth.CheckAdmin)
-	// g.PATCH("/:id", controllers.PatchSupplier)
 
 	g.DELETE("/:id", controllers.DeleteSupplier, auth.WithAuth, auth.CheckAdmin)
 }

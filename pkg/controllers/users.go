@@ -3,7 +3,6 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/geras4323/ecommerce-backend/pkg/auth"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/labstack/echo/v4"
@@ -31,33 +30,6 @@ func GetUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
-// POST /api/v1/users //////////////////////////////////////////////////////
-func CreateUser(c echo.Context) error {
-	body := models.CreateUser{}
-	c.Bind(&body)
-
-	hash, err := auth.HashPassword(body.Password)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
-	}
-
-	user := models.User{
-		Username:   body.Username,
-		Email:      body.Email,
-		Password:   hash,
-		First_name: body.First_name,
-		Last_name:  body.Last_name,
-		Phone:      body.Phone,
-		Role:       "customer",
-	}
-
-	if err := database.Gorm.Create(&user).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
-	}
-
-	return c.JSON(http.StatusCreated, user)
-}
-
 // PUT /api/v1/users/:id //////////////////////////////////////////////////////
 func UpdateUser(c echo.Context) error {
 	userID := c.Param("id")
@@ -70,9 +42,9 @@ func UpdateUser(c echo.Context) error {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
-	oldUser.Username = newUser.Username
-	oldUser.First_name = newUser.First_name
-	oldUser.Last_name = newUser.Last_name
+	// oldUser.Username = newUser.Username
+	oldUser.Name = newUser.Name
+	oldUser.Surname = newUser.Surname
 	oldUser.Phone = newUser.Phone
 	oldUser.Role = newUser.Role
 

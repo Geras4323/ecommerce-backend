@@ -75,6 +75,33 @@ func Logout(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// POST /api/v1/auth/signup //////////////////////////////////////////////////////
+func Signup(c echo.Context) error {
+	body := models.CreateUser{}
+	c.Bind(&body)
+
+	hash, err := auth.HashPassword(body.Password)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	user := models.User{
+		// Username:   body.Username,
+		Email:    body.Email,
+		Password: hash,
+		Name:     body.Name,
+		Surname:  body.Surname,
+		Phone:    body.Phone,
+		Role:     "customer",
+	}
+
+	if err := database.Gorm.Create(&user).Error; err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, user)
+}
+
 // POST /api/v1/auth/recovery
 func RecoverPassword(c echo.Context) error {
 	var body models.RecoverPassword

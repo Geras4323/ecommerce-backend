@@ -8,8 +8,6 @@ type JwtLoginClaims struct {
 	ID    uint   `json:"id"`
 	Email string `json:"email"`
 	Role  string `json:"role"`
-	// UUID in case of needing more security
-	// Sec   string `json:"sec"`
 	jwt.RegisteredClaims
 }
 
