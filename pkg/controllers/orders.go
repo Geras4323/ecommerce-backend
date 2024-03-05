@@ -40,6 +40,7 @@ func GetOrdersByUser(baseContext echo.Context) error {
 		Select("orders.*, COUNT(DISTINCT order_products.id) as products").
 		Joins("INNER JOIN order_products ON orders.id = order_products.order_id").
 		Where("orders.user_id = ?", c.User.ID).
+		Order("created_at DESC").
 		Group("orders.id").
 		Find(&orders).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
@@ -126,6 +127,8 @@ func CreateOrder(baseContext echo.Context) error {
 	if err := database.Gorm.Where("user_id = ?", c.User.ID).Unscoped().Delete(&models.CartItem{}).Error; err != nil {
 		return c.String(http.StatusInternalServerError, "Could not clear cart")
 	}
+
+	order.OrderProducts = append(order.OrderProducts, items...)
 
 	return c.JSON(http.StatusCreated, order)
 }
