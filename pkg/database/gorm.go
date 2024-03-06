@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/geras4323/ecommerce-backend/pkg/models"
+	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -18,7 +19,7 @@ func ConnectGorm() {
 
 	var dialector gorm.Dialector
 
-	dsn := "geras:admin123@tcp(127.0.0.1:3305)/ecommerce?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := utils.GetEnvVar("DB_DSN")
 	dialector = mysql.Open(dsn)
 
 	conn, err := gorm.Open(dialector, &gorm.Config{})

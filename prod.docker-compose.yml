@@ -1,0 +1,30 @@
+version: "3.1"
+name: ecommerce
+services:
+  db:
+    image: mysql
+    restart: unless-stopped
+    env_file: mysql.env
+    volumes:
+      - ./.database:/var/lib/mysql
+
+  api:
+    image: ghcr.io/geras4323/ecommerce-backend:latest
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    volumes:
+      - ./api.env:/usr/src/.env
+    ports:
+      - 3000:3000
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./watchtower.json:/config.json
+    command:
+      - "--interval=${WATCHTOWER_INTERVAL}"
+      - "--label-enable"
+      - "--notification-url=${WATCHTOWER_NOTIFICATION_URL}"

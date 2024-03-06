@@ -6,9 +6,9 @@ import (
 )
 
 func GetEnvVar(key string) string {
-	value := os.Getenv(key)
+	value, ok := os.LookupEnv(key)
 
-	if value == "" {
+	if !ok {
 		fmt.Printf("ENV_VAR: '%s' couln't be found", key)
 	}
 
