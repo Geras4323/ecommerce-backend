@@ -24,7 +24,7 @@ func main() {
 	cloud.ConnectCloudinary()
 
 	app.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://localhost:3000", "https://ecommerce-frontend-geras4323.vercel.app/"},
+		AllowOrigins:     []string{"http://localhost:3000", "https://misideaspintadas.com.ar"},
 		AllowHeaders:     []string{},
 		AllowCredentials: true,
 	}))
