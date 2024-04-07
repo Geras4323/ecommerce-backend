@@ -7,6 +7,8 @@ services:
     env_file: mysql.env
     volumes:
       - ./.database:/var/lib/mysql
+    ports:
+      - 3306:3306
 
   api:
     image: ghcr.io/geras4323/ecommerce-backend:latest

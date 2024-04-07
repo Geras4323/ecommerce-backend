@@ -56,6 +56,7 @@ func Login(c echo.Context) error {
 	cookie.Path = "/"
 	cookie.Value = signedToken
 	cookie.HttpOnly = true
+	cookie.Domain = "misideaspintadas.com.ar"
 	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
 	c.SetCookie(cookie)
 
@@ -70,6 +71,7 @@ func Logout(c echo.Context) error {
 	cookie.Value = ""
 	cookie.MaxAge = -1
 	cookie.HttpOnly = true
+	cookie.Domain = "misideaspintadas.com.ar"
 	c.SetCookie(cookie)
 
 	return c.NoContent(http.StatusOK)
