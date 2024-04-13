@@ -13,13 +13,18 @@ import (
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
+	"github.com/geras4323/ecommerce-backend/pkg/utils"
 )
 
 var Cld *cloudinary.Cloudinary
 var Ctx context.Context
 
 func ConnectCloudinary() {
-	cld, err := cloudinary.NewFromParams("gerasecommerce", "562628734429182", "kY6vdbsrkOhLFltjp2dzd26kXkk")
+	cld, err := cloudinary.NewFromParams(
+		utils.GetEnvVar("CLOUDINARY_CLOUD_NAME"),
+		utils.GetEnvVar("CLOUDINARY_PUBLIC_KEY"),
+		utils.GetEnvVar("CLOUDINARY_PRIVATE_KEY"),
+	)
 
 	if err != nil {
 		log.Fatal("CLOUDINARY: failed to connect")
@@ -56,7 +61,7 @@ func UploadImage(file *multipart.FileHeader, folder string, name string) (*uploa
 
 	mimetype := http.DetectContentType(buff.Bytes())
 	if !chechMimetype(mimetype) {
-		return nil, errors.New("Invalid image format")
+		return nil, errors.New("invalid image format")
 	}
 
 	base64file := fmt.Sprintf("data:%s;base64,%s", mimetype, toBase64(buff.Bytes()))

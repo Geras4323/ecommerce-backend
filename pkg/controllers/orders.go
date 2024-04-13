@@ -6,9 +6,11 @@ import (
 	"net/http"
 
 	"github.com/geras4323/ecommerce-backend/pkg/auth"
+	"github.com/geras4323/ecommerce-backend/pkg/cloud"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/labstack/echo/v4"
+	mailjet "github.com/mailjet/mailjet-apiv3-go"
 	"gorm.io/gorm"
 )
 
@@ -86,13 +88,22 @@ func CreateOrder(baseContext echo.Context) error {
 		return c.String(http.StatusNotFound, "User not found")
 	}
 
+	emailItems := make([]map[string]interface{}, len(items))
+
 	var total float64 = 0
-	for _, i := range items {
+	for i, item := range items {
 		var prod models.Product
-		if err := database.Gorm.First(&prod, i.ProductID).Error; err != nil {
-			return c.String(http.StatusNotFound, fmt.Sprintf("Product %d not found", i.ProductID))
+		if err := database.Gorm.First(&prod, item.ProductID).Error; err != nil {
+			return c.String(http.StatusNotFound, fmt.Sprintf("Product %d not found", item.ProductID))
 		}
-		total += float64(i.Quantity) * prod.Price
+		total += float64(item.Quantity) * prod.Price
+
+		emailItems[i] = map[string]interface{}{
+			"article":  prod.Name,
+			"quantity": item.Quantity,
+			"price":    math.Round(prod.Price*100) / 100,
+			"total":    math.Round(float64(item.Quantity)*prod.Price*100) / 100,
+		}
 	}
 
 	order := models.Order{
@@ -128,8 +139,37 @@ func CreateOrder(baseContext echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Could not clear cart")
 	}
 
-	order.OrderProducts = append(order.OrderProducts, items...)
+	// SEND CONFIRMATION EMAIL
+	variables := map[string]interface{}{
+		"name":  c.User.Name,
+		"items": emailItems,
+		"total": order.Total,
+	}
 
+	messagesInfo := []mailjet.InfoMessagesV31{
+		{
+			From: &mailjet.RecipientV31{
+				Email: cloud.DefaultSender.Email,
+				Name:  cloud.DefaultSender.Name,
+			},
+			To: &mailjet.RecipientsV31{
+				mailjet.RecipientV31{
+					Email: c.User.Email,
+				},
+			},
+			Subject:          "Confirmación de pedido",
+			TemplateLanguage: true,
+			TemplateID:       4839487,
+			Variables:        variables,
+		},
+	}
+
+	_, err := cloud.SendMail(messagesInfo)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	order.OrderProducts = append(order.OrderProducts, items...)
 	return c.JSON(http.StatusCreated, order)
 }
 

@@ -6,5 +6,5 @@ import (
 )
 
 func Email(g *echo.Group) {
-	g.GET("", controllers.GetEmail)
+	g.POST("", controllers.GetEmail)
 }

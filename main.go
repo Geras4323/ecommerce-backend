@@ -22,6 +22,7 @@ func main() {
 
 	database.ConnectGorm()
 	cloud.ConnectCloudinary()
+	cloud.ConnectMailjet()
 
 	app.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:3000", "https://misideaspintadas.com.ar"},
