@@ -11,6 +11,7 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
+	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -50,7 +51,7 @@ func UploadImage(c echo.Context) error {
 
 	mimetype := http.DetectContentType(buff.Bytes())
 	base64file := fmt.Sprintf("data:%s;base64,%s", mimetype, toBase64(buff.Bytes()))
-	fileFolder := "products"
+	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "products")
 	fileName := uuid.New().String()
 	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
 

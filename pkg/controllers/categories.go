@@ -7,6 +7,7 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
+	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gopkg.in/guregu/null.v4"
@@ -66,7 +67,7 @@ func UploadCategoryImage(c echo.Context) error {
 	}
 
 	// Upload new file
-	fileFolder := "categories"
+	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "categories")
 	fileName := uuid.New().String()
 	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
 

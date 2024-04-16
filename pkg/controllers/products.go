@@ -8,6 +8,7 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
+	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -94,7 +95,7 @@ func UploadProductImage(c echo.Context) error {
 	}
 
 	// Upload new file
-	fileFolder := "products"
+	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "products")
 	fileName := uuid.New().String()
 	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
 
