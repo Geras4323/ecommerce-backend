@@ -11,7 +11,7 @@ func Products(g *echo.Group) {
 	g.GET("/:id", controllers.GetProduct, auth.WithAuth, auth.CheckAdmin)
 
 	g.POST("", controllers.CreateProduct, auth.WithAuth, auth.CheckAdmin)
-	g.POST("/:id/image", controllers.UploadProductImage, auth.WithAuth, auth.CheckAdmin)
+	g.POST("/:id/images", controllers.UploadProductImage, auth.WithAuth, auth.CheckAdmin)
 
 	g.PUT("/:id", controllers.UpdateProduct, auth.WithAuth, auth.CheckAdmin)
 

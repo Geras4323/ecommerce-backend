@@ -9,5 +9,6 @@ import (
 func Images(g *echo.Group) {
 	g.GET("", controllers.GetImages)
 
+	g.POST("/test", controllers.ImagesTest)
 	g.POST("/upload", controllers.UploadImage, auth.WithAuth, auth.CheckAdmin)
 }

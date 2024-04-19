@@ -89,52 +89,65 @@ func UploadProductImage(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, err.Error())
 	}
 
-	file, err := c.FormFile("file")
+	form, err := c.MultipartForm()
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+	files := form.File["images"]
 
-	// Upload new file
-	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "products")
-	fileName := uuid.New().String()
-	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
+	fmt.Println(files)
 
-	upRes, upErr := cloud.UploadImage(file, fileFolder, fileName)
-	if upErr != nil {
-		fmt.Println(upErr.Error())
-		return c.JSON(http.StatusBadRequest, upErr.Error())
+	// Upload and save new files to DB
+	for _, file := range files {
+		src, err := file.Open()
+		if err != nil {
+			fmt.Println(err.Error())
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		defer src.Close()
+
+		// Upload
+		fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "products")
+		fileName := uuid.New().String()
+		filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
+
+		upRes, upErr := cloud.UploadImage(file, fileFolder, fileName)
+		if upErr != nil {
+			fmt.Println(upErr.Error())
+			return c.JSON(http.StatusBadRequest, upErr.Error())
+		}
+
+		// Save to DB
+		var newImage models.Image
+
+		prodID, _ := strconv.Atoi(productID)
+
+		newImage.Url = upRes.SecureURL
+		newImage.Name = filePath
+		newImage.ProductID = uint(prodID)
+
+		if err := database.Gorm.Create(&newImage).Error; err != nil {
+			return c.String(http.StatusConflict, err.Error())
+		}
 	}
 
 	// Delete all old images of that product
-	productImages := make([]models.Image, 0)
-	if err := database.Gorm.Where("product_id = ?", productID).Find(&productImages).Error; err != nil {
-		return c.JSON(http.StatusForbidden, err.Error())
-	}
+	// productImages := make([]models.Image, 0)
+	// if err := database.Gorm.Where("product_id = ?", productID).Find(&productImages).Error; err != nil {
+	// 	return c.JSON(http.StatusForbidden, err.Error())
+	// }
 
-	for _, pI := range productImages {
-		_, delErr := cloud.DeleteImage(pI.Name)
-		if delErr != nil {
-			return c.JSON(http.StatusInternalServerError, delErr.Error())
-		}
-		if err := database.Gorm.Unscoped().Delete(&models.Image{}, &pI.ID).Error; err != nil {
-			return c.JSON(http.StatusForbidden, err.Error())
-		}
-	}
+	// for _, pI := range productImages {
+	// 	_, delErr := cloud.DeleteImage(pI.Name)
+	// 	if delErr != nil {
+	// 		return c.JSON(http.StatusInternalServerError, delErr.Error())
+	// 	}
+	// 	if err := database.Gorm.Unscoped().Delete(&models.Image{}, &pI.ID).Error; err != nil {
+	// 		return c.JSON(http.StatusForbidden, err.Error())
+	// 	}
+	// }
 
-	// Save new image to DB
-	var newImage models.Image
-
-	prodID, _ := strconv.Atoi(productID)
-
-	newImage.Url = upRes.SecureURL
-	newImage.Name = filePath
-	newImage.ProductID = uint(prodID)
-
-	if err := database.Gorm.Create(&newImage).Error; err != nil {
-		return c.String(http.StatusConflict, err.Error())
-	}
-
-	return c.JSON(http.StatusOK, map[string]any{"id": newImage.ID, "cloud": upRes})
+	return c.JSON(http.StatusOK, "Images uploaded succesfully")
 }
 
 // PUT /api/v1/products/:id //////////////////////////////////////////////////////
