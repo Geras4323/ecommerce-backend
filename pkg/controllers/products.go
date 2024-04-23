@@ -11,12 +11,15 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
 )
 
 // GET /api/v1/products //////////////////////////////////////////////////////
 func GetProducts(c echo.Context) error {
 	products := make([]models.Product, 0)
-	if err := database.Gorm.Preload("Images").Order("created_at DESC").Find(&products).Error; err != nil {
+	if err := database.Gorm.Preload("Images", func(db *gorm.DB) *gorm.DB {
+		return db.Order("position ASC")
+	}).Order("created_at DESC").Find(&products).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
@@ -28,7 +31,9 @@ func GetProduct(c echo.Context) error {
 	productID := c.Param("id")
 
 	var product models.Product
-	if err := database.Gorm.First(&product, productID).Error; err != nil {
+	if err := database.Gorm.Preload("Images", func(db *gorm.DB) *gorm.DB {
+		return db.Order("position ASC")
+	}).First(&product, productID).Error; err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
@@ -81,8 +86,8 @@ func CreateProduct(c echo.Context) error {
 	return c.JSON(http.StatusCreated, product)
 }
 
-// POST /api/v1/products/:id/image
-func UploadProductImage(c echo.Context) error {
+// POST /api/v1/products/:id/images
+func UploadProductImages(c echo.Context) error {
 	productID := c.Param("id")
 	var oldProduct models.Product
 	if err := database.Gorm.Find(&oldProduct, productID).Error; err != nil {
@@ -95,10 +100,12 @@ func UploadProductImage(c echo.Context) error {
 	}
 	files := form.File["images"]
 
-	fmt.Println(files)
+	// Look for last image (for when adding images to existent product (its position))
+	lastImage := models.Image{}
+	database.Gorm.Select("position").Where("product_id = ?", productID).Last(&lastImage)
 
 	// Upload and save new files to DB
-	for _, file := range files {
+	for i, file := range files {
 		src, err := file.Open()
 		if err != nil {
 			fmt.Println(err.Error())
@@ -106,7 +113,7 @@ func UploadProductImage(c echo.Context) error {
 		}
 		defer src.Close()
 
-		// Upload
+		// // Upload
 		fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "products")
 		fileName := uuid.New().String()
 		filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
@@ -125,27 +132,12 @@ func UploadProductImage(c echo.Context) error {
 		newImage.Url = upRes.SecureURL
 		newImage.Name = filePath
 		newImage.ProductID = uint(prodID)
+		newImage.Position = lastImage.Position + uint(i)
 
 		if err := database.Gorm.Create(&newImage).Error; err != nil {
 			return c.String(http.StatusConflict, err.Error())
 		}
 	}
-
-	// Delete all old images of that product
-	// productImages := make([]models.Image, 0)
-	// if err := database.Gorm.Where("product_id = ?", productID).Find(&productImages).Error; err != nil {
-	// 	return c.JSON(http.StatusForbidden, err.Error())
-	// }
-
-	// for _, pI := range productImages {
-	// 	_, delErr := cloud.DeleteImage(pI.Name)
-	// 	if delErr != nil {
-	// 		return c.JSON(http.StatusInternalServerError, delErr.Error())
-	// 	}
-	// 	if err := database.Gorm.Unscoped().Delete(&models.Image{}, &pI.ID).Error; err != nil {
-	// 		return c.JSON(http.StatusForbidden, err.Error())
-	// 	}
-	// }
 
 	return c.JSON(http.StatusOK, "Images uploaded succesfully")
 }
@@ -174,6 +166,43 @@ func UpdateProduct(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, oldProduct)
+}
+
+func UpdateProductImages(c echo.Context) error {
+	productID := c.Param("id")
+	var product models.Product
+	if err := database.Gorm.Find(&product, productID).Error; err != nil {
+		return c.JSON(http.StatusNotFound, err.Error())
+	}
+
+	productImages := make([]models.RearrangedImage, 0)
+	c.Bind(&productImages)
+
+	// Rearrange Images
+	for _, pI := range productImages {
+		var oldImage models.Image
+		if err := database.Gorm.First(&oldImage, pI.Id).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+
+		if pI.IsDeleted {
+			_, errDel := cloud.DeleteImage(oldImage.Name)
+			if errDel != nil {
+				return c.String(http.StatusInternalServerError, errDel.Error())
+			}
+			if err := database.Gorm.Unscoped().Delete(&models.Image{}, &pI.Id).Error; err != nil {
+				return c.JSON(http.StatusInternalServerError, err.Error())
+			}
+		} else {
+			oldImage.Position = pI.Position
+
+			if err := database.Gorm.Where("id = ?", pI.Id).Save(&oldImage).Error; err != nil {
+				return c.String(http.StatusInternalServerError, err.Error())
+			}
+		}
+	}
+
+	return c.JSON(http.StatusOK, productImages)
 }
 
 // DELETE /api/v1/products/:id //////////////////////////////////////////////////////
