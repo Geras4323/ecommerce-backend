@@ -31,6 +31,36 @@ func GetImages(c echo.Context) error {
 	return c.JSON(http.StatusOK, images)
 }
 
+// POST /images/test
+func ImagesTest(c echo.Context) error {
+	form, err := c.MultipartForm()
+	if err != nil {
+		return err
+	}
+	files := form.File["images"]
+
+	fmt.Println(files)
+
+	for _, file := range files {
+		src, err := file.Open()
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+		defer src.Close()
+
+		fmt.Println(src)
+
+		// buff := bytes.NewBuffer(nil)
+		// io.Copy(buff, src)
+		// base64file := toBase64(buff.Bytes())
+
+		// fmt.Println(base64file)
+	}
+
+	return nil
+}
+
 // POST /images/upload
 func UploadImage(c echo.Context) error {
 	file, err := c.FormFile("file")
