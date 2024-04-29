@@ -19,15 +19,14 @@ func GetOrders(c echo.Context) error {
 	orders := make([]models.Order, 0)
 
 	if err := database.Gorm.
+		Preload("User").
 		Select("orders.*, COUNT(DISTINCT order_products.id) as products").
 		Joins("INNER JOIN order_products ON orders.id = order_products.order_id").
 		Group("orders.id").
+		Order("orders.created_at DESC").
 		Find(&orders).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	// Find(&orders).Error; err != nil {
-	// 	return c.String(http.StatusInternalServerError, err.Error())
-	// }
 
 	return c.JSON(http.StatusOK, orders)
 }
@@ -62,11 +61,11 @@ func GetOrder(baseContext echo.Context) error {
 
 	var order models.Order
 	// if err := database.Gorm.Preload("Payments").First(&order, orderID).Error; err != nil {
-	if err := database.Gorm.Preload("OrderProducts").First(&order, orderID).Error; err != nil {
+	if err := database.Gorm.Preload("User").Preload("OrderProducts").First(&order, orderID).Error; err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
-	if order.UserID != c.User.ID {
+	if order.UserID != c.User.ID && c.User.Role != "admin" {
 		return c.String(http.StatusUnauthorized, "Order does not belong to user")
 	}
 
@@ -173,8 +172,8 @@ func CreateOrder(baseContext echo.Context) error {
 	return c.JSON(http.StatusCreated, order)
 }
 
-// PATCH /api/v1/orders/:id //////////////////////////////////////////////////////
-func UpdateOrder(c echo.Context) error {
+// PATCH /api/v1/orders/:id/state //////////////////////////////////////////////////////
+func UpdateOrderState(c echo.Context) error {
 	orderID := c.Param("id")
 
 	var newOrder models.UpdateOrder
@@ -185,7 +184,7 @@ func UpdateOrder(c echo.Context) error {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
-	oldOrder.Total = newOrder.Total
+	oldOrder.State = newOrder.State
 
 	if err := database.Gorm.Where("id = ?", orderID).Save(&oldOrder).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
