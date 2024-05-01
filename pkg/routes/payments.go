@@ -9,10 +9,9 @@ func Payments(g *echo.Group) {
 	g.GET("", controllers.GetPayments)
 	g.GET("/:id", controllers.GetPayment)
 
-	g.POST("", controllers.CreatePayment)
+	g.POST("/:orderID", controllers.CreatePayment)
 
 	g.PUT("/:id", controllers.UpdatePayment)
-	// g.PATCH("/:id", controllers.PatchPayment)
 
 	g.DELETE("/:id", controllers.DeletePayment)
 }

@@ -11,4 +11,6 @@ func Images(g *echo.Group) {
 
 	g.POST("/test", controllers.ImagesTest)
 	g.POST("/upload", controllers.UploadImage, auth.WithAuth, auth.CheckAdmin)
+
+	g.POST("/upload/pdf", controllers.UploadPDF, auth.WithAuth, auth.CheckAdmin)
 }

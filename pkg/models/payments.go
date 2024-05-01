@@ -3,16 +3,7 @@ package models
 type Payment struct {
 	Model
 
-	OrderID	uint		`json:"orderID"`
-	Amount	float32	`json:"amount"`
-}
-
-type CreatePayment struct {
-	OrderID	uint		`json:"orderID"`
-	Amount	float32	`json:"amount"`
-}
-
-type UpdatePayment struct {
-	OrderID	uint		`json:"orderID"`
-	Amount	float32	`json:"amount"`
+	OrderID uint   `json:"orderID"`
+	Url     string `json:"url"`
+	Name    string `json:"name"`
 }

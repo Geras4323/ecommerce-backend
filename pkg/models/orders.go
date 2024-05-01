@@ -3,12 +3,16 @@ package models
 type Order struct {
 	Model
 
-	UserID uint    `json:"userID"`
-	Total  float64 `json:"total"`
-	// Payments      []Payment      `json:"payments"`
-	OrderProducts []OrderProduct `json:"orderProducts"`
+	Total float64 `json:"total"`
+	State uint8   `json:"state" gorm:"default:0"`
 
-	Products uint `json:"products" gorm:"-:migration;<-:false"` // llenar con SQL de DBeaver
+	OrderProducts []OrderProduct `json:"orderProducts"`
+	Payments      []Payment      `json:"payments"`
+
+	UserID uint `json:"userID"`
+	User   User `json:"user,omitempty" gorm:"foreignKey:UserID"`
+
+	Products uint `json:"products" gorm:"-:migration;<-:false"`
 }
 
 type CreateOrder struct {
@@ -17,8 +21,7 @@ type CreateOrder struct {
 }
 
 type UpdateOrder struct {
-	// UserID uint    `json:"userID"`
-	Total float64 `json:"total"`
+	State uint8 `json:"state"`
 }
 
 type AddProduct struct {

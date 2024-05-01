@@ -13,7 +13,7 @@ func Orders(g *echo.Group) {
 
 	g.POST("", controllers.CreateOrder, auth.WithAuth)
 
-	g.PATCH("/:id", controllers.UpdateOrder, auth.WithAuth, auth.CheckAdmin)
+	g.PATCH("/:id/state", controllers.UpdateOrderState, auth.WithAuth, auth.CheckAdmin)
 
 	g.DELETE("/:id", controllers.DeleteOrder, auth.WithAuth, auth.CheckAdmin)
 }
