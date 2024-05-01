@@ -81,7 +81,7 @@ func UploadImage(c echo.Context) error {
 
 	mimetype := http.DetectContentType(buff.Bytes())
 	base64file := fmt.Sprintf("data:%s;base64,%s", mimetype, toBase64(buff.Bytes()))
-	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "products")
+	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "vouchers")
 	fileName := uuid.New().String()
 	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
 
@@ -104,4 +104,40 @@ func UploadImage(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// res, err := cloud.Cld.Upload.Destroy(cloud.Ctx, uploader.DestroyParams{PublicID: "products/testDesdeGo2"})
+func UploadPDF(c echo.Context) error {
+	file, err := c.FormFile("file")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(file.Filename)
+
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	buff := bytes.NewBuffer(nil)
+	io.Copy(buff, src)
+
+	mimetype := http.DetectContentType(buff.Bytes())
+	base64file := fmt.Sprintf("data:%s;base64,%s", mimetype, toBase64(buff.Bytes()))
+	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "payments")
+	fileName := uuid.New().String()
+	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
+
+	fmt.Println(filePath)
+
+	res, err := cloud.Cld.Upload.Upload(cloud.Ctx, base64file, uploader.UploadParams{
+		PublicID: fileName,
+		Folder:   fileFolder,
+	})
+
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	fmt.Println(res.SecureURL)
+	return c.JSON(http.StatusOK, res)
+}

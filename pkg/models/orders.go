@@ -5,8 +5,9 @@ type Order struct {
 
 	Total float64 `json:"total"`
 	State uint8   `json:"state" gorm:"default:0"`
-	// Payments      []Payment      `json:"payments"`
+
 	OrderProducts []OrderProduct `json:"orderProducts"`
+	Payments      []Payment      `json:"payments"`
 
 	UserID uint `json:"userID"`
 	User   User `json:"user,omitempty" gorm:"foreignKey:UserID"`

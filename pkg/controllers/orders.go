@@ -61,7 +61,7 @@ func GetOrder(baseContext echo.Context) error {
 
 	var order models.Order
 	// if err := database.Gorm.Preload("Payments").First(&order, orderID).Error; err != nil {
-	if err := database.Gorm.Preload("User").Preload("OrderProducts").First(&order, orderID).Error; err != nil {
+	if err := database.Gorm.Preload("Payments").Preload("User").Preload("OrderProducts").First(&order, orderID).Error; err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
