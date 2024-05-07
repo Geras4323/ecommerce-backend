@@ -12,7 +12,9 @@ type User struct {
 	Surname       string      `json:"surname"`
 	Phone         null.String `json:"phone"`
 	Role          string      `json:"role" gorm:"default:customer"`
-	RecoveryToken string      `json:"-"`
+	VerifyToken   null.String `json:"-"`
+	Verified      bool        `json:"verified" gorm:"default:false"`
+	RecoveryToken null.String `json:"-"`
 
 	// Orders []Order `json:"orders"`
 }

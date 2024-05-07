@@ -16,6 +16,11 @@ type JwtChangePasswordClaims struct {
 	jwt.RegisteredClaims
 }
 
+type JwtVerifyEmailClaims struct {
+	Email string `json:"email"`
+	jwt.RegisteredClaims
+}
+
 func SignToken(claims jwt.Claims, secret string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
