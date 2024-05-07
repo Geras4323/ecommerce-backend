@@ -18,7 +18,7 @@ type EmailProduct struct {
 
 var DefaultSender = SenderAddress{
 	Email: "geras4323info@gmail.com",
-	Name:  "Swiftharbour",
+	Name:  "Mis Ideas Pintadas",
 }
 
 var Mjt *mailjet.Client

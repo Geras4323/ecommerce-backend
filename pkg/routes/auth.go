@@ -13,6 +13,8 @@ func Auth(g *echo.Group) {
 	g.POST("/logout", controllers.Logout, auth.WithAuth)
 
 	g.POST("/signup", controllers.Signup)
+	g.POST("/signup/verify/:token", controllers.VerifyEmail)
+	g.POST("/signup/verify/restart", controllers.RestarEmailVerification, auth.WithAuth)
 
 	g.POST("/recovery", controllers.RecoverPassword)
 	g.POST("/change-password", controllers.ChangePassword)
