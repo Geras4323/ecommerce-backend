@@ -26,6 +26,6 @@ WORKDIR /usr/src
 
 COPY --from=builder /out/ .
 
-EXPOSE 3000
+EXPOSE 1323
 
 ENTRYPOINT [ "./main" ]
