@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
@@ -22,9 +23,16 @@ func toBase64(b []byte) string {
 
 // GET /images
 func GetImages(c echo.Context) error {
+	rawLimit := c.QueryParam("limit")
+
+	limit, err := strconv.Atoi(rawLimit)
+	if err != nil {
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+
 	images := make([]models.Image, 0)
 
-	if err := database.Gorm.Find(&images).Error; err != nil {
+	if err := database.Gorm.Order("RAND()").Limit(limit).Find(&images).Error; err != nil {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
