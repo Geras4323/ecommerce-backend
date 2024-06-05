@@ -44,7 +44,6 @@ func UpdateUser(c echo.Context) error {
 
 	// oldUser.Username = newUser.Username
 	oldUser.Name = newUser.Name
-	oldUser.Surname = newUser.Surname
 	oldUser.Phone = newUser.Phone
 	oldUser.Role = newUser.Role
 

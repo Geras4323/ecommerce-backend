@@ -106,7 +106,6 @@ func Signup(c echo.Context) error {
 		Email:       body.Email,
 		Password:    hash,
 		Name:        body.Name,
-		Surname:     body.Surname,
 		Phone:       body.Phone,
 		Role:        "customer",
 		VerifyToken: null.StringFrom(verificationSignedToken),
