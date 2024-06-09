@@ -279,13 +279,41 @@ func RecoverPassword(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
-	user.RecoveryToken.String = signedToken
+	user.RecoveryToken = null.StringFrom(signedToken)
 
 	if err := database.Gorm.Where("id = ?", user.ID).Save(&user).Error; err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, signedToken)
+	variables := map[string]interface{}{
+		"name": user.Name,
+		"url":  fmt.Sprintf("%s%s%s", utils.GetEnvVar("WEB_URL"), "/sign/resetPassword/", signedToken),
+	}
+
+	messagesInfo := []mailjet.InfoMessagesV31{
+		{
+			From: &mailjet.RecipientV31{
+				Email: cloud.DefaultSender.Email,
+				Name:  cloud.DefaultSender.Name,
+			},
+			To: &mailjet.RecipientsV31{
+				mailjet.RecipientV31{
+					Email: user.Email,
+				},
+			},
+			Subject:          "Restablecimiento de contraseña",
+			TemplateLanguage: true,
+			TemplateID:       6037343,
+			Variables:        variables,
+		},
+	}
+
+	_, mailErr := cloud.SendMail(messagesInfo)
+	if mailErr != nil {
+		c.String(http.StatusInternalServerError, mailErr.Error())
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 // POST /api/v1/auth/change-password
@@ -318,7 +346,7 @@ func ChangePassword(c echo.Context) error {
 			return c.String(http.StatusInternalServerError, err.Error())
 		}
 
-		return c.JSON(http.StatusOK, map[string]any{"id": user.ID, "meesage": "Password updated successfully"})
+		return c.JSON(http.StatusOK, map[string]any{"id": user.ID, "message": "Password updated successfully"})
 	}
 
 	return c.String(http.StatusUnauthorized, "Invalid password update token")
