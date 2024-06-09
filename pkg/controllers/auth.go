@@ -258,8 +258,8 @@ func RestarEmailVerification(baseContext echo.Context) error {
 }
 
 // POST /api/v1/auth/recovery
-func RecoverPassword(c echo.Context) error {
-	var body models.RecoverPassword
+func StartPasswordRecovery(c echo.Context) error {
+	var body models.PasswordRecovery
 	c.Bind(&body)
 
 	var user models.User
@@ -317,8 +317,8 @@ func RecoverPassword(c echo.Context) error {
 }
 
 // POST /api/v1/auth/change-password
-func ChangePassword(c echo.Context) error {
-	var body models.ChangePassword
+func RecoverPassword(c echo.Context) error {
+	var body models.RecoverPassword
 	c.Bind(&body)
 
 	claims := &auth.JwtChangePasswordClaims{}
@@ -350,4 +350,34 @@ func ChangePassword(c echo.Context) error {
 	}
 
 	return c.String(http.StatusUnauthorized, "Invalid password update token")
+}
+
+// PATCH /api/v1/auth/change-password
+func ChangePassword(baseContext echo.Context) error {
+	c := baseContext.(*auth.AuthContext)
+
+	body := models.ChangePassword{}
+	c.Bind(&body)
+
+	var oldUser models.User
+	if err := database.Gorm.First(&oldUser, c.User.ID).Error; err != nil {
+		return c.String(http.StatusNotFound, err.Error())
+	}
+
+	if !auth.VerifyPassword(oldUser.Password, body.CurrentPassword) {
+		return c.String(http.StatusUnauthorized, "Contraseña actual incorrecta")
+	}
+
+	hash, err := auth.HashPassword(body.NewPassword)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	oldUser.Password = hash
+
+	if err := database.Gorm.Where("id = ?", c.User.ID).Save(&oldUser).Error; err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]any{"id": c.User.ID, "message": "Password changed successfully"})
 }

@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 
+	"github.com/geras4323/ecommerce-backend/pkg/auth"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/labstack/echo/v4"
@@ -31,10 +32,10 @@ func GetUser(c echo.Context) error {
 }
 
 // PUT /api/v1/users/:id //////////////////////////////////////////////////////
-func UpdateUser(c echo.Context) error {
+func ChangeUserRole(c echo.Context) error {
 	userID := c.Param("id")
 
-	var newUser models.UpdateUser
+	var newUser models.ChangeUserRole
 	c.Bind(&newUser)
 
 	var oldUser models.User
@@ -42,12 +43,32 @@ func UpdateUser(c echo.Context) error {
 		return c.String(http.StatusNotFound, err.Error())
 	}
 
-	// oldUser.Username = newUser.Username
-	oldUser.Name = newUser.Name
-	oldUser.Phone = newUser.Phone
 	oldUser.Role = newUser.Role
 
 	if err := database.Gorm.Where("id = ?", userID).Save(&oldUser).Error; err != nil {
+		return c.String(http.StatusConflict, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, oldUser)
+}
+
+// PATCH /api/v1/users/update-data ///////////////////////////////////////////////
+func UpdateUser(baseContext echo.Context) error {
+	c := baseContext.(*auth.AuthContext)
+
+	var body models.UpdateUser
+	c.Bind(&body)
+
+	var oldUser models.User
+	if err := database.Gorm.First(&oldUser, c.User.ID).Error; err != nil {
+		return c.String(http.StatusNotFound, err.Error())
+	}
+
+	oldUser.Name = body.Name
+	// oldUser.Email = body.Email
+	oldUser.Phone = body.Phone
+
+	if err := database.Gorm.Where("id = ?", c.User.ID).Save(&oldUser).Error; err != nil {
 		return c.String(http.StatusConflict, err.Error())
 	}
 
