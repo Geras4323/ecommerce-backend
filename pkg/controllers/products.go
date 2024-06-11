@@ -19,7 +19,7 @@ func GetProducts(c echo.Context) error {
 	products := make([]models.Product, 0)
 	if err := database.Gorm.Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("position ASC")
-	}).Order("created_at DESC").Find(&products).Error; err != nil {
+	}).Order("position ASC").Find(&products).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
@@ -168,6 +168,7 @@ func UpdateProduct(c echo.Context) error {
 	return c.JSON(http.StatusOK, oldProduct)
 }
 
+// PATCH /api/v1/products/:id/images ////////////////////////////////////////////////
 func UpdateProductImages(c echo.Context) error {
 	productID := c.Param("id")
 	var product models.Product
@@ -203,6 +204,35 @@ func UpdateProductImages(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, productImages)
+}
+
+func UpdateProductsPositions(c echo.Context) error {
+	products := make([]models.UpdatePosition, 0)
+	c.Bind(&products)
+
+	// BEGIN TRANSACTION
+	txError := database.Gorm.Transaction(func(tx *gorm.DB) error {
+		for _, p := range products {
+			var oldProduct models.Product
+			if err := database.Gorm.First(&oldProduct, p.ID).Error; err != nil {
+				return c.String(http.StatusNotFound, fmt.Sprintf("Could not find item %d", p.ID))
+			}
+
+			oldProduct.Position = p.Position
+
+			if err := tx.Save(&oldProduct).Error; err != nil {
+				return c.String(http.StatusInternalServerError, fmt.Sprintf("Could not save item %d position", p.ID))
+			}
+		}
+
+		return nil
+	})
+
+	if txError != nil {
+		return txError
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 // DELETE /api/v1/products/:id //////////////////////////////////////////////////////

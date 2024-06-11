@@ -7,6 +7,7 @@ type Product struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
+	Position    uint    `json:"position"`
 	// OrderProducts []OrderProduct `json:"orderProducts"`
 
 	Images []Image `json:"images"`
@@ -33,4 +34,9 @@ type UpdateProduct struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
+}
+
+type UpdatePosition struct {
+	ID       uint `json:"id"`
+	Position uint `json:"position"`
 }
