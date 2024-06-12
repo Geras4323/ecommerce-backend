@@ -9,10 +9,22 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
+	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"github.com/labstack/echo/v4"
 	mailjet "github.com/mailjet/mailjet-apiv3-go"
 	"gorm.io/gorm"
 )
+
+var OrderErrors = map[string]string{
+	"Internal": "Ocurrió un error durante la carga de los pedidos",
+
+	"NotFound": "Orden no encontrada",
+	"Create":   "Error al crear orden",
+	"Update":   "Error al actualizar orden",
+	"Delete":   "Error al eliminar orden",
+
+	"Empty": "Esta orden no tiene productos",
+}
 
 // GET /api/v1/orders //////////////////////////////////////////////////////
 func GetOrders(c echo.Context) error {
@@ -25,7 +37,7 @@ func GetOrders(c echo.Context) error {
 		Group("orders.id").
 		Order("orders.created_at DESC").
 		Find(&orders).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(OrderErrors[utils.Internal], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, orders)
@@ -44,11 +56,8 @@ func GetOrdersByUser(baseContext echo.Context) error {
 		Order("created_at DESC").
 		Group("orders.id").
 		Find(&orders).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(OrderErrors[utils.Internal], err.Error()))
 	}
-	// if err := database.Gorm.Where("user_id = ?", c.User.ID).Find(&orders).Error; err != nil {
-	// 	return c.String(http.StatusInternalServerError, err.Error())
-	// }
 
 	return c.JSON(http.StatusOK, orders)
 }
@@ -60,13 +69,12 @@ func GetOrder(baseContext echo.Context) error {
 	orderID := c.Context.Param("id")
 
 	var order models.Order
-	// if err := database.Gorm.Preload("Payments").First(&order, orderID).Error; err != nil {
 	if err := database.Gorm.Preload("Payments").Preload("User").Preload("OrderProducts").First(&order, orderID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(OrderErrors[utils.NotFound], err.Error()))
 	}
 
 	if order.UserID != c.User.ID && c.User.Role != "admin" {
-		return c.String(http.StatusUnauthorized, "Order does not belong to user")
+		return c.JSON(http.StatusUnauthorized, utils.SCTMake(OrderErrors[utils.NotFound], "inexistent order")) // Order does not belong to user - to not tell this order exists
 	}
 
 	return c.JSON(http.StatusOK, order)
@@ -80,11 +88,11 @@ func CreateOrder(baseContext echo.Context) error {
 	c.Bind(&items)
 
 	if len(items) == 0 {
-		return c.String(http.StatusForbidden, "No products in order")
+		return c.JSON(http.StatusForbidden, utils.SCTMake(OrderErrors["Empty"], "no products in order"))
 	}
 
 	if err := database.Gorm.First(&models.User{}, c.User.ID).Error; err != nil {
-		return c.String(http.StatusNotFound, "User not found")
+		return c.JSON(http.StatusNotFound, utils.SCTMake(AuthErrors[utils.NotFound], err.Error()))
 	}
 
 	emailItems := make([]map[string]interface{}, len(items))
@@ -93,7 +101,7 @@ func CreateOrder(baseContext echo.Context) error {
 	for i, item := range items {
 		var prod models.Product
 		if err := database.Gorm.First(&prod, item.ProductID).Error; err != nil {
-			return c.String(http.StatusNotFound, fmt.Sprintf("Product %d not found", item.ProductID))
+			return c.JSON(http.StatusNotFound, utils.SCTMake(fmt.Sprintf("Producto %d no encontrado", item.ProductID), err.Error()))
 		}
 		total += float64(item.Quantity) * prod.Price
 
@@ -113,7 +121,7 @@ func CreateOrder(baseContext echo.Context) error {
 	// BEGIN TRANSACTION
 	txError := database.Gorm.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&order).Error; err != nil {
-			return c.String(http.StatusInternalServerError, "Could not create order")
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(OrderErrors[utils.Create], err.Error()))
 		}
 
 		for _, i := range items {
@@ -122,7 +130,7 @@ func CreateOrder(baseContext echo.Context) error {
 			item.ProductID = i.ProductID
 			item.Quantity = i.Quantity
 			if err := tx.Create(&item).Error; err != nil {
-				return c.String(http.StatusInternalServerError, fmt.Sprintf("Could not add item %d to order", item.ID))
+				return c.JSON(http.StatusInternalServerError, utils.SCTMake(fmt.Sprintf("Error al agregar producto %d a la orden", item.ID), err.Error()))
 			}
 		}
 
@@ -135,7 +143,7 @@ func CreateOrder(baseContext echo.Context) error {
 
 	// CLEAR SHOPPING CART
 	if err := database.Gorm.Where("user_id = ?", c.User.ID).Unscoped().Delete(&models.CartItem{}).Error; err != nil {
-		return c.String(http.StatusInternalServerError, "Could not clear cart")
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(CartErrors["Clear"], err.Error()))
 	}
 
 	// SEND CONFIRMATION EMAIL
@@ -165,7 +173,7 @@ func CreateOrder(baseContext echo.Context) error {
 
 	_, err := cloud.SendMail(messagesInfo)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusBadGateway, utils.SCTMake(utils.CommonErrors[utils.Email], err.Error()))
 	}
 
 	order.OrderProducts = append(order.OrderProducts, items...)
@@ -181,13 +189,13 @@ func UpdateOrderState(c echo.Context) error {
 
 	var oldOrder models.Order
 	if err := database.Gorm.First(&oldOrder, orderID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(OrderErrors[utils.NotFound], err.Error()))
 	}
 
 	oldOrder.State = newOrder.State
 
 	if err := database.Gorm.Where("id = ?", orderID).Save(&oldOrder).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(OrderErrors[utils.Update], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, oldOrder)
@@ -198,11 +206,11 @@ func DeleteOrder(c echo.Context) error {
 	orderID := c.Param("id")
 
 	if err := database.Gorm.First(&models.Order{}, orderID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(OrderErrors[utils.NotFound], err.Error()))
 	}
 
 	if err := database.Gorm.Delete(&models.Order{}, orderID).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(OrderErrors[utils.Delete], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{"id": orderID, "message": "Order deleted successfully"})

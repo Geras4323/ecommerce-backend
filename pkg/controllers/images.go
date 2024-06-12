@@ -17,6 +17,13 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+var ImageErrors = map[string]string{
+	"Internal": "Ocurrió un error durante la carga de las imágenes",
+
+	"NotFound": "Imagen no encontrada",
+	"Parse":    "Limite inválido",
+}
+
 func toBase64(b []byte) string {
 	return base64.StdEncoding.EncodeToString(b)
 }
@@ -27,13 +34,13 @@ func GetImages(c echo.Context) error {
 
 	limit, err := strconv.Atoi(rawLimit)
 	if err != nil {
-		return c.String(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, utils.SCTMake(ImageErrors["Parse"], err.Error()))
 	}
 
 	images := make([]models.Image, 0)
 
 	if err := database.Gorm.Order("RAND()").Limit(limit).Find(&images).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(ImageErrors[utils.Internal], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, images)
@@ -76,8 +83,6 @@ func UploadImage(c echo.Context) error {
 		return err
 	}
 
-	fmt.Println(file.Filename)
-
 	src, err := file.Open()
 	if err != nil {
 		return err
@@ -91,9 +96,9 @@ func UploadImage(c echo.Context) error {
 	base64file := fmt.Sprintf("data:%s;base64,%s", mimetype, toBase64(buff.Bytes()))
 	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "vouchers")
 	fileName := uuid.New().String()
-	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
 
-	fmt.Println(filePath)
+	// filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
+	// fmt.Println(filePath)
 
 	res, err := cloud.Cld.Upload.Upload(cloud.Ctx, base64file, uploader.UploadParams{
 		PublicID: fileName,
@@ -101,7 +106,7 @@ func UploadImage(c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, utils.SCTMake(utils.CommonErrors[utils.FileUpload], err.Error()))
 	}
 
 	// Save image URL to database
@@ -118,8 +123,6 @@ func UploadPDF(c echo.Context) error {
 		return err
 	}
 
-	fmt.Println(file.Filename)
-
 	src, err := file.Open()
 	if err != nil {
 		return err
@@ -133,9 +136,9 @@ func UploadPDF(c echo.Context) error {
 	base64file := fmt.Sprintf("data:%s;base64,%s", mimetype, toBase64(buff.Bytes()))
 	fileFolder := fmt.Sprintf("%s/%s", utils.GetEnvVar("CLOUDINARY_ENV_FOLDER"), "payments")
 	fileName := uuid.New().String()
-	filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
 
-	fmt.Println(filePath)
+	// filePath := fmt.Sprintf("%s/%s", fileFolder, fileName)
+	// fmt.Println(filePath)
 
 	res, err := cloud.Cld.Upload.Upload(cloud.Ctx, base64file, uploader.UploadParams{
 		PublicID: fileName,
@@ -143,9 +146,8 @@ func UploadPDF(c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, utils.SCTMake(utils.CommonErrors[utils.FileUpload], err.Error()))
 	}
 
-	fmt.Println(res.SecureURL)
 	return c.JSON(http.StatusOK, res)
 }

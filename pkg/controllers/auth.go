@@ -18,6 +18,21 @@ import (
 	"gorm.io/gorm"
 )
 
+var AuthErrors = map[string]string{
+	"WrongCredentials": "Email o contraseña inválidos",
+	"AlreadyExists":    "Ya hay un usuario con ese email",
+	"WrongPassword":    "Contraseña actual incorrecta",
+	"PasswordHash":     "Error al encriptar contraseña",
+
+	"NotFound": "Usuario no encontrado",
+	"Create":   "Error al crear usuario",
+	"Update":   "Error al actualizar usuario",
+
+	"TokenSign":    "Error al firmar token",
+	"TokenVerify":  "Error al verificar token",
+	"TokenInvalid": "Token de virifación inválido",
+}
+
 // GET	/api/v1/auth/session
 func GetSession(baseContext echo.Context) error {
 	c := baseContext.(*auth.AuthContext)
@@ -34,13 +49,13 @@ func Login(c echo.Context) error {
 	err := result.Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return c.String(http.StatusUnauthorized, err.Error())
+			return c.JSON(http.StatusUnauthorized, utils.SCTMake(AuthErrors["WrongCredentials"], err.Error()))
 		}
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
 	}
 
 	if isPasswordVerified := auth.VerifyPassword(user.Password, body.Password); !isPasswordVerified {
-		return c.String(http.StatusUnauthorized, "Invalid credentials")
+		return c.JSON(http.StatusUnauthorized, utils.SCTMake(AuthErrors["WrongCredentials"], "invalid credentials"))
 	}
 
 	claims := &auth.JwtLoginClaims{
@@ -51,7 +66,7 @@ func Login(c echo.Context) error {
 
 	signedToken, err := auth.SignToken(claims, utils.GetEnvVar("JWT_LOGIN_SECRET"))
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
 	}
 
 	cookie := new(http.Cookie)
@@ -59,7 +74,7 @@ func Login(c echo.Context) error {
 	cookie.Path = "/"
 	cookie.Value = signedToken
 	cookie.HttpOnly = true
-	cookie.Domain = "misideaspintadas.com.ar"
+	// cookie.Domain = "misideaspintadas.com.ar"
 	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
 	c.SetCookie(cookie)
 
@@ -74,7 +89,7 @@ func Logout(c echo.Context) error {
 	cookie.Value = ""
 	cookie.MaxAge = -1
 	cookie.HttpOnly = true
-	cookie.Domain = "misideaspintadas.com.ar"
+	// cookie.Domain = "misideaspintadas.com.ar"
 	c.SetCookie(cookie)
 
 	return c.NoContent(http.StatusOK)
@@ -87,7 +102,7 @@ func Signup(c echo.Context) error {
 
 	hash, err := auth.HashPassword(body.Password)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
 	}
 
 	verificationClaims := auth.JwtVerifyEmailClaims{
@@ -99,7 +114,7 @@ func Signup(c echo.Context) error {
 
 	verificationSignedToken, err := auth.SignToken(verificationClaims, utils.GetEnvVar("JWT_VERIFY_EMAIL_SECRET"))
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
 	}
 
 	user := models.User{
@@ -113,7 +128,7 @@ func Signup(c echo.Context) error {
 	}
 
 	if err := database.Gorm.Create(&user).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.Create], err.Error()))
 	}
 
 	// SEND CONFIRMATION EMAIL
@@ -142,7 +157,7 @@ func Signup(c echo.Context) error {
 
 	_, mailErr := cloud.SendMail(messagesInfo)
 	if mailErr != nil {
-		c.String(http.StatusInternalServerError, mailErr.Error())
+		c.JSON(http.StatusBadGateway, utils.SCTMake(utils.CommonErrors[utils.Email], mailErr.Error()))
 	}
 
 	// LOGIN USER
@@ -154,7 +169,7 @@ func Signup(c echo.Context) error {
 
 	loginSignedToken, err := auth.SignToken(loginClaims, utils.GetEnvVar("JWT_LOGIN_SECRET"))
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.TokenSign], err.Error()))
 	}
 
 	cookie := new(http.Cookie)
@@ -162,7 +177,7 @@ func Signup(c echo.Context) error {
 	cookie.Path = "/"
 	cookie.Value = loginSignedToken
 	cookie.HttpOnly = true
-	cookie.Domain = "misideaspintadas.com.ar"
+	// cookie.Domain = "misideaspintadas.com.ar"
 	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
 	c.SetCookie(cookie)
 
@@ -177,12 +192,12 @@ func VerifyEmail(c echo.Context) error {
 	token, err := auth.VerifyToken(tokenParam, claims, utils.GetEnvVar("JWT_VERIFY_EMAIL_SECRET"))
 
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.TokenVerify], err.Error()))
 	}
 
 	var user models.User
-	if err := database.Gorm.Where("email = ?", claims.Email).First(&user).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+	if err := database.Gorm.Where("email = ?", claims.Email).First(&user).Error; err == nil {
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.AlreadyExists], "existent record found"))
 	}
 
 	if token.Raw == user.VerifyToken.String {
@@ -190,13 +205,13 @@ func VerifyEmail(c echo.Context) error {
 		user.VerifyToken = null.String{}
 
 		if err := database.Gorm.Where("id = ?", user.ID).Save(&user).Error; err != nil {
-			return c.String(http.StatusInternalServerError, err.Error())
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.Update], err.Error()))
 		}
 
-		return c.JSON(http.StatusOK, map[string]any{"id": user.ID, "meesage": "Account verified successfully"})
+		return c.JSON(http.StatusOK, map[string]any{"id": user.ID, "message": "Account verified successfully"})
 	}
 
-	return c.String(http.StatusUnauthorized, "Invalid email verify token")
+	return c.JSON(http.StatusUnauthorized, utils.SCTMake(AuthErrors[utils.TokenInvalid], "token is not correct"))
 }
 
 // POST /api/v1/auth/signup/verify/restart
@@ -205,7 +220,7 @@ func RestarEmailVerification(baseContext echo.Context) error {
 
 	var oldUser models.User
 	if err := database.Gorm.First(&oldUser, c.User.ID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(AuthErrors[utils.NotFound], err.Error()))
 	}
 
 	claims := auth.JwtVerifyEmailClaims{
@@ -217,13 +232,13 @@ func RestarEmailVerification(baseContext echo.Context) error {
 
 	signedToken, err := auth.SignToken(claims, utils.GetEnvVar("JWT_VERIFY_EMAIL_SECRET"))
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.TokenSign], err.Error()))
 	}
 
 	oldUser.VerifyToken = null.StringFrom(signedToken)
 
 	if err := database.Gorm.Where("id = ?", c.User.ID).Save(&oldUser).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.Update], err.Error()))
 	}
 
 	variables := map[string]interface{}{
@@ -251,7 +266,7 @@ func RestarEmailVerification(baseContext echo.Context) error {
 
 	_, mailErr := cloud.SendMail(messagesInfo)
 	if mailErr != nil {
-		c.String(http.StatusInternalServerError, mailErr.Error())
+		c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Email], mailErr.Error()))
 	}
 
 	return c.NoContent(http.StatusOK)
@@ -264,7 +279,7 @@ func StartPasswordRecovery(c echo.Context) error {
 
 	var user models.User
 	if err := database.Gorm.Where("email = ?", body.Email).First(&user).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(AuthErrors[utils.NotFound], err.Error()))
 	}
 
 	claims := auth.JwtChangePasswordClaims{
@@ -276,13 +291,13 @@ func StartPasswordRecovery(c echo.Context) error {
 
 	signedToken, err := auth.SignToken(claims, utils.GetEnvVar("JWT_RES_PASS_SECRET"))
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.TokenSign], err.Error()))
 	}
 
 	user.RecoveryToken = null.StringFrom(signedToken)
 
 	if err := database.Gorm.Where("id = ?", user.ID).Save(&user).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.Update], err.Error()))
 	}
 
 	variables := map[string]interface{}{
@@ -310,7 +325,7 @@ func StartPasswordRecovery(c echo.Context) error {
 
 	_, mailErr := cloud.SendMail(messagesInfo)
 	if mailErr != nil {
-		c.String(http.StatusInternalServerError, mailErr.Error())
+		c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Email], mailErr.Error()))
 	}
 
 	return c.NoContent(http.StatusOK)
@@ -325,31 +340,31 @@ func RecoverPassword(c echo.Context) error {
 	token, err := auth.VerifyToken(body.Token, claims, utils.GetEnvVar("JWT_RES_PASS_SECRET"))
 
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.TokenVerify], err.Error()))
 	}
 
 	var user models.User
 	if err := database.Gorm.First(&user, claims.ID).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(AuthErrors[utils.NotFound], err.Error()))
 	}
 
 	if token.Raw == user.RecoveryToken.String {
 		hash, err := auth.HashPassword(body.NewPassword)
 		if err != nil {
-			return c.String(http.StatusInternalServerError, err.Error())
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.PasswordHash], err.Error()))
 		}
 
 		user.Password = hash
 		user.RecoveryToken.String = ""
 
 		if err := database.Gorm.Where("id = ?", user.ID).Save(&user).Error; err != nil {
-			return c.String(http.StatusInternalServerError, err.Error())
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.Update], err.Error()))
 		}
 
 		return c.JSON(http.StatusOK, map[string]any{"id": user.ID, "message": "Password updated successfully"})
 	}
 
-	return c.String(http.StatusUnauthorized, "Invalid password update token")
+	return c.JSON(http.StatusUnauthorized, utils.SCTMake(AuthErrors[utils.TokenInvalid], "token is not correct"))
 }
 
 // PATCH /api/v1/auth/change-password
@@ -361,22 +376,22 @@ func ChangePassword(baseContext echo.Context) error {
 
 	var oldUser models.User
 	if err := database.Gorm.First(&oldUser, c.User.ID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(AuthErrors[utils.NotFound], err.Error()))
 	}
 
 	if !auth.VerifyPassword(oldUser.Password, body.CurrentPassword) {
-		return c.String(http.StatusUnauthorized, "Contraseña actual incorrecta")
+		return c.JSON(http.StatusUnauthorized, utils.SCTMake(AuthErrors[utils.WrongPassword], "current password is not valid"))
 	}
 
 	hash, err := auth.HashPassword(body.NewPassword)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.PasswordHash], err.Error()))
 	}
 
 	oldUser.Password = hash
 
 	if err := database.Gorm.Where("id = ?", c.User.ID).Save(&oldUser).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.Update], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{"id": c.User.ID, "message": "Password changed successfully"})

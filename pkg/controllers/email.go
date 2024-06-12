@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
+	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"github.com/labstack/echo/v4"
 	mailjet "github.com/mailjet/mailjet-apiv3-go"
 )
@@ -51,7 +52,7 @@ func GetEmail(c echo.Context) error {
 
 	res, err := cloud.SendMail(messagesInfo)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+		c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Email], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, res)

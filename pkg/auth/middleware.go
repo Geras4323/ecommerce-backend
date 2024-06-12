@@ -11,6 +11,12 @@ import (
 	"gorm.io/gorm"
 )
 
+var AuthMiddlewareErrors = map[string]string{
+	"NoCookie":  "El usuario no está logueado",
+	"NoAdmin":   "El usuario debe ser administrador",
+	"WrongRole": "El usuario no tiene el rol requerido",
+}
+
 type AuthContext struct {
 	echo.Context
 	User *models.User
@@ -25,7 +31,7 @@ func CheckRole(r ...string) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			return c.String(http.StatusUnauthorized, "Unauthorized role")
+			return c.JSON(http.StatusUnauthorized, utils.SCTMake(AuthMiddlewareErrors["WrongRole"], "wrong role"))
 		}
 	}
 }
@@ -38,7 +44,7 @@ func CheckAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 			return next(c)
 		}
 
-		return c.String(http.StatusUnauthorized, "Unauthorized role - Admin needed")
+		return c.JSON(http.StatusUnauthorized, utils.SCTMake(AuthMiddlewareErrors["NoADmin"], "user is not admin"))
 	}
 }
 
@@ -46,22 +52,22 @@ func WithAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cookie, err := c.Cookie("ec_session")
 		if err != nil {
-			return c.JSON(http.StatusForbidden, err.Error())
+			return c.JSON(http.StatusForbidden, utils.SCTMake(AuthMiddlewareErrors["NoCookie"], err.Error()))
 		}
 
 		userClaims := &JwtLoginClaims{}
 		_, verifyErr := VerifyToken(cookie.Value, userClaims, utils.GetEnvVar("JWT_LOGIN_SECRET"))
 
 		if verifyErr != nil {
-			return c.String(http.StatusInternalServerError, verifyErr.Error())
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake("Error al verificar token", verifyErr.Error()))
 		}
 
 		var user models.User
 		if err := database.Gorm.Where("id = ? AND email = ?", userClaims.ID, userClaims.Email).First(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return c.String(http.StatusUnauthorized, err.Error())
+				return c.JSON(http.StatusUnauthorized, utils.SCTMake("Email o contraseña inválidos", err.Error()))
 			}
-			return c.String(http.StatusInternalServerError, err.Error())
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
 		}
 
 		authContext := &AuthContext{

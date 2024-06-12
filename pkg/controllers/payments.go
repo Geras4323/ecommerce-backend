@@ -15,12 +15,21 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+var PaymentErrors = map[string]string{
+	"Internal": "Ocurrió un error durante la carga de los comprobantes",
+
+	"NotFound": "Comprobante no encontrado",
+	"Create":   "Error al crear comprobante",
+	"Update":   "Error al actualizar comprobante",
+	"Delete":   "Error al eliminar comprobante",
+}
+
 // GET /api/v1/payments //////////////////////////////////////////////////////
 func GetPayments(c echo.Context) error {
 	payments := make([]models.Payment, 0)
 
 	if err := database.Gorm.Find(&payments).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(PaymentErrors[utils.Internal], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, payments)
@@ -32,7 +41,7 @@ func GetPayment(c echo.Context) error {
 
 	var payment models.Payment
 	if err := database.Gorm.First(&payment, paymentID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(PaymentErrors[utils.NotFound], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, payment)
@@ -44,7 +53,7 @@ func CreatePayment(c echo.Context) error {
 
 	var order models.Order
 	if err := database.Gorm.First(&order, orderID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(OrderErrors[utils.NotFound], err.Error()))
 	}
 
 	file, err := c.FormFile("file")
@@ -74,7 +83,7 @@ func CreatePayment(c echo.Context) error {
 	})
 
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusBadRequest, utils.SCTMake(utils.CommonErrors[utils.FileUpload], err.Error()))
 	}
 
 	// Save to DB
@@ -84,7 +93,7 @@ func CreatePayment(c echo.Context) error {
 	newPayment.Name = filePath
 
 	if err := database.Gorm.Create(&newPayment).Error; err != nil {
-		return c.String(http.StatusConflict, err.Error())
+		return c.JSON(http.StatusConflict, utils.SCTMake(PaymentErrors[utils.Create], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, newPayment)
@@ -99,24 +108,18 @@ func UpdatePayment(c echo.Context) error {
 
 	// var oldPayment models.Payment
 	// if err := database.Gorm.First(&oldPayment, paymentID).Error; err != nil {
-	// 	return c.String(http.StatusNotFound, err.Error())
+	// 	return c.JSON(http.StatusNotFound, utils.SCTMake(PaymentErrors[utils.NotFound], err.Error()))
 	// }
 
 	// oldPayment.OrderID = newPayment.OrderID
 
 	// if err := database.Gorm.Where("id = ?", paymentID).Save(&oldPayment).Error; err != nil {
-	// 	return c.String(http.StatusInternalServerError, err.Error())
+	// 	return c.JSON(http.StatusInternalServerError, utils.SCTMake(PaymentErrors[utils.Update], err.Error()))
 	// }
 
 	// return c.JSON(http.StatusOK, oldPayment)
 	return nil
 }
-
-// PATCH /api/v1/payments/:id
-// func PatchPayment(c echo.Context) error {
-
-// 	return nil
-// }
 
 // DELETE /api/v1/payments/:id //////////////////////////////////////////////////////
 func DeletePayment(c echo.Context) error {
@@ -124,11 +127,11 @@ func DeletePayment(c echo.Context) error {
 
 	var payment models.Payment
 	if err := database.Gorm.First(&payment, paymentID).Error; err != nil {
-		return c.String(http.StatusNotFound, err.Error())
+		return c.JSON(http.StatusNotFound, utils.SCTMake(PaymentErrors[utils.NotFound], err.Error()))
 	}
 
 	if err := database.Gorm.Delete(&payment, paymentID).Error; err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(PaymentErrors[utils.Delete], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{"id": paymentID, "message": "Payment deleted successfully"})
