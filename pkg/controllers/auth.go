@@ -74,7 +74,7 @@ func Login(c echo.Context) error {
 	cookie.Path = "/"
 	cookie.Value = signedToken
 	cookie.HttpOnly = true
-	// cookie.Domain = "misideaspintadas.com.ar"
+	cookie.Domain = utils.GetEnvVar("COOKIE_DOMAIN")
 	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
 	c.SetCookie(cookie)
 
@@ -89,7 +89,7 @@ func Logout(c echo.Context) error {
 	cookie.Value = ""
 	cookie.MaxAge = -1
 	cookie.HttpOnly = true
-	// cookie.Domain = "misideaspintadas.com.ar"
+	cookie.Domain = utils.GetEnvVar("COOKIE_DOMAIN")
 	c.SetCookie(cookie)
 
 	return c.NoContent(http.StatusOK)
@@ -177,7 +177,7 @@ func Signup(c echo.Context) error {
 	cookie.Path = "/"
 	cookie.Value = loginSignedToken
 	cookie.HttpOnly = true
-	// cookie.Domain = "misideaspintadas.com.ar"
+	cookie.Domain = utils.GetEnvVar("COOKIE_DOMAIN")
 	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
 	c.SetCookie(cookie)
 
