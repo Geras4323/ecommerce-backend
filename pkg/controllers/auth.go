@@ -196,8 +196,8 @@ func VerifyEmail(c echo.Context) error {
 	}
 
 	var user models.User
-	if err := database.Gorm.Where("email = ?", claims.Email).First(&user).Error; err == nil {
-		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.AlreadyExists], "existent record found"))
+	if err := database.Gorm.Where("email = ?", claims.Email).First(&user).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.NotFound], err.Error()))
 	}
 
 	if token.Raw == user.VerifyToken.String {
