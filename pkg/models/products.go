@@ -8,6 +8,7 @@ type Product struct {
 	Description string  `json:"description"`
 	Price       float64 `json:"price"`
 	Position    uint    `json:"position"`
+	Listed      bool    `json:"listed" gorm:"default:1"`
 	// OrderProducts []OrderProduct `json:"orderProducts"`
 
 	Images []Image `json:"images"`

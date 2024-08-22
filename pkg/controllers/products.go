@@ -25,10 +25,18 @@ var ProductErrors = map[string]string{
 
 // GET /api/v1/products //////////////////////////////////////////////////////
 func GetProducts(c echo.Context) error {
-	products := make([]models.Product, 0)
-	if err := database.Gorm.Preload("Images", func(db *gorm.DB) *gorm.DB {
+	showAll := c.QueryParam("showAll")
+
+	query := database.Gorm.Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("position ASC")
-	}).Order("position ASC").Find(&products).Error; err != nil {
+	}).Order("position ASC")
+
+	if showAll != "true" {
+		query = query.Where("listed = 1")
+	}
+
+	products := make([]models.Product, 0)
+	if err := query.Find(&products).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Internal], err.Error()))
 	}
 
@@ -153,20 +161,151 @@ func UploadProductImages(c echo.Context) error {
 func UpdateProduct(c echo.Context) error {
 	productID := c.Param("id")
 
-	var newProduct models.UpdateProduct
-	c.Bind(&newProduct)
+	var newData models.UpdateProduct
+	c.Bind(&newData)
+
+	var productInSomeOrder bool
+	database.Gorm.Raw(`
+		SELECT ? IN (
+			SELECT DISTINCT(product_id)
+			FROM order_products op
+		)
+	`, productID).Scan(&productInSomeOrder)
 
 	var oldProduct models.Product
 	if err := database.Gorm.First(&oldProduct, productID).Error; err != nil {
 		return c.JSON(http.StatusNotFound, utils.SCTMake(ProductErrors[utils.NotFound], err.Error()))
 	}
 
-	oldProduct.Code = newProduct.Code
-	oldProduct.Name = newProduct.Name
-	oldProduct.Description = newProduct.Description
-	oldProduct.Price = newProduct.Price
-	oldProduct.CategoryID = newProduct.CategoryID
-	oldProduct.SupplierID = newProduct.SupplierID
+	// Create new version
+	// if productInSomeOrder {
+	// 	txError := database.Gorm.Transaction(func(tx *gorm.DB) error {
+	// 		newProduct := models.Product{
+	// 			CategoryID:  newData.CategoryID,
+	// 			SupplierID:  newData.SupplierID,
+	// 			Code:        newData.Code,
+	// 			Name:        newData.Name,
+	// 			Description: newData.Description,
+	// 			Price:       newData.Price,
+	// 			Position:    oldProduct.Position,
+	// 			Listed:      true,
+	// 		}
+
+	// 		if err := database.Gorm.Create(&newProduct).Error; err != nil {
+	// 			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
+	// 		}
+
+	// 		// Reasign images
+	// 		images := make([]models.Image, 0)
+	// 		if err := database.Gorm.Where("product_id = ?", productID).Find(&images).Error; err != nil {
+	// 			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ImageErrors[utils.NotFound], err.Error()))
+	// 		}
+
+	// 		for i, image := range images {
+	// 			// Duplicate for old product
+	// 			if image.Position == 0 {
+	// 				newImage := models.Image{
+	// 					Url:       image.Url,
+	// 					ProductID: image.ProductID,
+	// 					Name:      image.Name,
+	// 					Position:  0,
+	// 				}
+	// 				if err := database.Gorm.Create(&newImage).Error; err != nil {
+	// 					return c.JSON(http.StatusConflict, utils.SCTMake(utils.CommonErrors[utils.FileSave], err.Error()))
+	// 				}
+	// 			}
+	// 			// Reasing to new product
+	// 			images[i].ProductID = newProduct.ID
+	// 			if err := database.Gorm.Save(&images[i]).Error; err != nil {
+	// 				return c.JSON(http.StatusConflict, utils.SCTMake(utils.CommonErrors[utils.FileSave], err.Error()))
+	// 			}
+	// 		}
+
+	// 		// Hide old product
+	// 		oldProduct.Listed = false
+	// 		if err := database.Gorm.Where("id = ?", productID).Save(&oldProduct).Error; err != nil {
+	// 			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Update], err.Error()))
+	// 		}
+
+	// 		return c.JSON(http.StatusOK, newProduct)
+	// 	})
+
+	// 	if txError != nil {
+	// 		return txError
+	// 	}
+	// }
+	if productInSomeOrder {
+		newProduct := models.Product{
+			CategoryID:  newData.CategoryID,
+			SupplierID:  newData.SupplierID,
+			Code:        newData.Code,
+			Name:        newData.Name,
+			Description: newData.Description,
+			Price:       newData.Price,
+			Position:    oldProduct.Position,
+			Listed:      true,
+		}
+
+		if err := database.Gorm.Create(&newProduct).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
+		}
+
+		// Reasign images
+		images := make([]models.Image, 0)
+		if err := database.Gorm.Where("product_id = ?", productID).Find(&images).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ImageErrors[utils.NotFound], err.Error()))
+		}
+
+		for i, image := range images {
+			// Duplicate for old product
+			if image.Position == 0 {
+				newImage := models.Image{
+					Url:       image.Url,
+					ProductID: image.ProductID,
+					Name:      image.Name,
+					Position:  0,
+				}
+				if err := database.Gorm.Create(&newImage).Error; err != nil {
+					return c.JSON(http.StatusConflict, utils.SCTMake(utils.CommonErrors[utils.FileSave], err.Error()))
+				}
+			}
+			// Reasing to new product
+			images[i].ProductID = newProduct.ID
+			if err := database.Gorm.Save(&images[i]).Error; err != nil {
+				return c.JSON(http.StatusConflict, utils.SCTMake(utils.CommonErrors[utils.FileSave], err.Error()))
+			}
+		}
+
+		// Update cart
+		cartItems := make([]models.CartItem, 0)
+		if err := database.Gorm.Where("product_id = ?", productID).Find(&cartItems).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ImageErrors[utils.NotFound], err.Error()))
+		}
+
+		for i := range cartItems {
+			// Reasing to new product
+			cartItems[i].ProductID = newProduct.ID
+			if err := database.Gorm.Save(&cartItems[i]).Error; err != nil {
+				return c.JSON(http.StatusConflict, utils.SCTMake(utils.CommonErrors[utils.Update], err.Error()))
+			}
+		}
+
+		// Hide old product
+		oldProduct.Listed = false
+		if err := database.Gorm.Where("id = ?", productID).Save(&oldProduct).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Update], err.Error()))
+		}
+
+		return c.JSON(http.StatusOK, newProduct)
+	}
+
+	// Update old version
+	oldProduct.Code = newData.Code
+	oldProduct.Name = newData.Name
+	oldProduct.Description = newData.Description
+	oldProduct.Price = newData.Price
+	oldProduct.CategoryID = newData.CategoryID
+	oldProduct.SupplierID = newData.SupplierID
 
 	if err := database.Gorm.Where("id = ?", productID).Save(&oldProduct).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Update], err.Error()))
