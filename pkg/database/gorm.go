@@ -40,6 +40,7 @@ func ConnectGorm() {
 		&models.Order{},
 		&models.OrderProduct{},
 		&models.Payment{},
+		&models.State{},
 	)
 
 	if migrationError != nil {

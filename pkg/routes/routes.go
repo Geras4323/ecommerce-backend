@@ -16,4 +16,5 @@ func SetupRoutes(app *echo.Echo) {
 	Images(api.Group("/images"))
 
 	Email(api.Group("/email"))
+	States(api.Group("/states"))
 }
