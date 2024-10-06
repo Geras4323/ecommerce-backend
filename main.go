@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
+	"github.com/geras4323/ecommerce-backend/pkg/crons"
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/routes"
 	"github.com/joho/godotenv"
@@ -23,6 +24,7 @@ func main() {
 	database.ConnectGorm()
 	cloud.ConnectCloudinary()
 	cloud.ConnectMailjet()
+	crons.Setup()
 
 	app.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:3000", "https://misideaspintadas.com.ar"},
