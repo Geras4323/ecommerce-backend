@@ -13,7 +13,7 @@ import (
 func Setup() {
 	c := cron.New()
 	checkStates()
-	c.AddFunc("@daily", func() { checkStates() })
+	c.AddFunc("@midnight", func() { checkStates() })
 	c.Start()
 }
 
