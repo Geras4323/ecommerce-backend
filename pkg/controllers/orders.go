@@ -69,7 +69,7 @@ func GetOrder(baseContext echo.Context) error {
 	orderID := c.Context.Param("id")
 
 	var order models.Order
-	if err := database.Gorm.Preload("Payments").Preload("User").Preload("OrderProducts").First(&order, orderID).Error; err != nil {
+	if err := database.Gorm.Preload("Payments").Preload("User").Preload("OrderProducts.Product.Images").First(&order, orderID).Error; err != nil {
 		return c.JSON(http.StatusNotFound, utils.SCTMake(OrderErrors[utils.NotFound], err.Error()))
 	}
 
@@ -84,7 +84,7 @@ func GetOrder(baseContext echo.Context) error {
 func CreateOrder(baseContext echo.Context) error {
 	c := baseContext.(*auth.AuthContext)
 
-	items := []models.OrderProduct{}
+	items := []models.NewOrderProduct{}
 	c.Bind(&items)
 
 	if len(items) == 0 {
@@ -176,7 +176,7 @@ func CreateOrder(baseContext echo.Context) error {
 		c.JSON(http.StatusBadGateway, utils.SCTMake(utils.CommonErrors[utils.Email], err.Error()))
 	}
 
-	order.OrderProducts = append(order.OrderProducts, items...)
+	// order.OrderProducts = append(order.OrderProducts, items...)
 	return c.JSON(http.StatusCreated, order)
 }
 

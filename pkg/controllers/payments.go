@@ -13,6 +13,7 @@ import (
 	"github.com/geras4323/ecommerce-backend/pkg/utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"gopkg.in/guregu/null.v4"
 )
 
 var PaymentErrors = map[string]string{
@@ -90,7 +91,8 @@ func CreatePayment(c echo.Context) error {
 	var newPayment models.Payment
 	newPayment.OrderID = order.ID
 	newPayment.Url = res.SecureURL
-	newPayment.Name = filePath
+	newPayment.Name = null.StringFrom(filePath)
+	newPayment.Platform = "attachment"
 
 	if err := database.Gorm.Create(&newPayment).Error; err != nil {
 		return c.JSON(http.StatusConflict, utils.SCTMake(PaymentErrors[utils.Create], err.Error()))
@@ -135,4 +137,28 @@ func DeletePayment(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{"id": paymentID, "message": "Payment deleted successfully"})
+}
+
+// POST /api/v1/payments/mercadopago/add //////////////////////////////////////////////////////
+func AddMPPayment(c echo.Context) error {
+	body := models.MPPayment{}
+	c.Bind(&body)
+
+	var order models.Order
+	if err := database.Gorm.First(&order, body.OrderID).Error; err != nil {
+		return c.JSON(http.StatusNotFound, utils.SCTMake(OrderErrors[utils.NotFound], err.Error()))
+	}
+
+	var newPayment models.Payment
+	newPayment.OrderID = body.OrderID
+	newPayment.Url = fmt.Sprintf("https://www.mercadopago.com.ar/tools/receipt-view/%d", body.PaymentID)
+	newPayment.Payed = body.Payed
+	newPayment.Received = body.Received
+	newPayment.Platform = "mercadopago"
+
+	if err := database.Gorm.Create(&newPayment).Error; err != nil {
+		return c.JSON(http.StatusConflict, utils.SCTMake(PaymentErrors[utils.Create], err.Error()))
+	}
+
+	return c.JSON(http.StatusOK, newPayment)
 }
