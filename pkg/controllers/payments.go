@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/geras4323/ecommerce-backend/pkg/cloud"
@@ -25,6 +26,15 @@ var PaymentErrors = map[string]string{
 	"Delete":   "Error al eliminar comprobante",
 }
 
+const (
+	StatusAccepted string = "accepted"
+	StatusPending  string = "pending"
+	StatusRejected string = "rejected"
+
+	PlatformMP         string = "mercadopago"
+	PlatformAttachment string = "attachment"
+)
+
 // GET /api/v1/payments //////////////////////////////////////////////////////
 func GetPayments(c echo.Context) error {
 	payments := make([]models.Payment, 0)
@@ -36,7 +46,7 @@ func GetPayments(c echo.Context) error {
 	return c.JSON(http.StatusOK, payments)
 }
 
-// GET /api/v1/payments/:id
+// GET /api/v1/payments/:id ?statusOnly=
 func GetPayment(c echo.Context) error {
 	paymentID := c.Param("id")
 
@@ -45,7 +55,17 @@ func GetPayment(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, utils.SCTMake(PaymentErrors[utils.NotFound], err.Error()))
 	}
 
-	return c.JSON(http.StatusOK, payment)
+	statusOnly := c.QueryParam("statusOnly") == "true"
+	var returnValue interface{}
+
+	if statusOnly {
+		returnValue = payment.Status
+	} else {
+		returnValue = payment
+	}
+
+	return c.JSON(http.StatusOK, returnValue)
+
 }
 
 // POST /api/v1/payments //////////////////////////////////////////////////////
@@ -90,9 +110,10 @@ func CreatePayment(c echo.Context) error {
 	// Save to DB
 	var newPayment models.Payment
 	newPayment.OrderID = order.ID
-	newPayment.Url = res.SecureURL
-	newPayment.Name = null.StringFrom(filePath)
-	newPayment.Platform = "attachment"
+	newPayment.Url = null.StringFrom(res.SecureURL)
+	newPayment.Path = null.StringFrom(filePath)
+	newPayment.Status = StatusAccepted
+	newPayment.Platform = PlatformAttachment
 
 	if err := database.Gorm.Create(&newPayment).Error; err != nil {
 		return c.JSON(http.StatusConflict, utils.SCTMake(PaymentErrors[utils.Create], err.Error()))
@@ -141,7 +162,7 @@ func DeletePayment(c echo.Context) error {
 
 // POST /api/v1/payments/mercadopago/add //////////////////////////////////////////////////////
 func AddMPPayment(c echo.Context) error {
-	body := models.MPPayment{}
+	body := models.NewMPPayment{}
 	c.Bind(&body)
 
 	var order models.Order
@@ -151,14 +172,38 @@ func AddMPPayment(c echo.Context) error {
 
 	var newPayment models.Payment
 	newPayment.OrderID = body.OrderID
-	newPayment.Url = fmt.Sprintf("https://www.mercadopago.com.ar/tools/receipt-view/%d", body.PaymentID)
-	newPayment.Payed = body.Payed
-	newPayment.Received = body.Received
-	newPayment.Platform = "mercadopago"
+	newPayment.Status = StatusPending
+	newPayment.Platform = PlatformMP
 
 	if err := database.Gorm.Create(&newPayment).Error; err != nil {
 		return c.JSON(http.StatusConflict, utils.SCTMake(PaymentErrors[utils.Create], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, newPayment)
+}
+
+// POST /api/v1/payments/mercadopago/:id/end //////////////////////////////////////////////////////
+func EndMPPayment(c echo.Context) error {
+	paymentID := c.Param("id")
+
+	body := models.EndMPPayment{}
+	c.Bind(&body)
+
+	var oldPayment models.Payment
+	if err := database.Gorm.First(&oldPayment, paymentID).Error; err != nil {
+		return c.JSON(http.StatusNotFound, utils.SCTMake(PaymentErrors[utils.NotFound], err.Error()))
+	}
+
+	oldPayment.Url = null.StringFrom(fmt.Sprintf("https://www.mercadopago.com.ar/tools/receipt-view/%d", body.PaymentNumber))
+	oldPayment.Paid = body.Paid
+	oldPayment.Received = body.Received
+	oldPayment.Status = body.Status
+
+	if err := database.Gorm.Where("id = ?", paymentID).Save(&oldPayment).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(PaymentErrors[utils.Update], err.Error()))
+	}
+
+	fmt.Printf("RECEIVED PAYMENT:\nDate: %s\n\n", time.Now().Format(time.RFC1123Z))
+
+	return c.JSON(http.StatusOK, oldPayment)
 }
