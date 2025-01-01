@@ -6,8 +6,9 @@ import (
 )
 
 func States(g *echo.Group) {
-	g.POST("/vacation/set", controllers.SetVacation)
-
 	g.GET("/vacation", controllers.GetVacation)
 	g.PATCH("/vacation", controllers.UpdateVacation)
+
+	g.GET("/mercadopago", controllers.GetMPPayments)
+	g.PATCH("/mercadopago", controllers.UpdateMPPayments)
 }
