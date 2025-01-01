@@ -10,6 +10,8 @@ func Payments(g *echo.Group) {
 	g.GET("/:id", controllers.GetPayment)
 
 	g.POST("/:orderID", controllers.CreatePayment)
+	g.POST("/mercadopago/add", controllers.AddMPPayment)
+	g.POST("/mercadopago/:id/end", controllers.EndMPPayment)
 
 	g.PUT("/:id", controllers.UpdatePayment)
 

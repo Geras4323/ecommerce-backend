@@ -8,6 +8,11 @@ type OrderProduct struct {
 	OrderID uint  `json:"-"`
 	Order   Order `json:"-" gorm:"foreignKey:OrderID"`
 
-	ProductID uint    `json:"productID"`
-	Product   Product `json:"-" gorm:"foreignKey:ProductID"`
+	ProductID uint    `json:"-"`
+	Product   Product `json:"product" gorm:"foreignKey:ProductID"`
+}
+
+type NewOrderProduct struct {
+	ProductID uint `json:"productID"`
+	Quantity  uint `json:"quantity"`
 }
