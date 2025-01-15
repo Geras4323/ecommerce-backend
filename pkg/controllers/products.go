@@ -88,12 +88,13 @@ func CreateProduct(c echo.Context) error {
 	c.Bind(&body)
 
 	product := models.Product{
-		CategoryID:  body.CategoryID,
-		SupplierID:  body.SupplierID,
-		Code:        body.Code,
-		Name:        body.Name,
-		Description: body.Description,
-		Price:       body.Price,
+		CategoryID:       body.CategoryID,
+		SupplierID:       body.SupplierID,
+		Code:             body.Code,
+		Name:             body.Name,
+		Description:      body.Description,
+		Price:            body.Price,
+		MeasurementUnits: body.MeasurementUnits,
 	}
 
 	if err := database.Gorm.Create(&product).Error; err != nil {
@@ -236,14 +237,15 @@ func UpdateProduct(c echo.Context) error {
 	// }
 	if productInSomeOrder {
 		newProduct := models.Product{
-			CategoryID:  newData.CategoryID,
-			SupplierID:  newData.SupplierID,
-			Code:        newData.Code,
-			Name:        newData.Name,
-			Description: newData.Description,
-			Price:       newData.Price,
-			Position:    oldProduct.Position,
-			Listed:      true,
+			CategoryID:       newData.CategoryID,
+			SupplierID:       newData.SupplierID,
+			Code:             newData.Code,
+			Name:             newData.Name,
+			Description:      newData.Description,
+			Price:            newData.Price,
+			Position:         oldProduct.Position,
+			Listed:           true,
+			MeasurementUnits: newData.MeasurementUnits,
 		}
 
 		if err := database.Gorm.Create(&newProduct).Error; err != nil {

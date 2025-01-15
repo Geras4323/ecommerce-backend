@@ -3,12 +3,13 @@ package models
 type Product struct {
 	Model
 
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Position    uint    `json:"position"`
-	Listed      bool    `json:"listed" gorm:"default:1"`
+	Code             string  `json:"code"`
+	Name             string  `json:"name"`
+	Description      string  `json:"description"`
+	Price            float64 `json:"price"`
+	Position         uint    `json:"position"`
+	Listed           bool    `json:"listed" gorm:"default:1"`
+	MeasurementUnits string  `json:"measurementUnits"`
 	// OrderProducts []OrderProduct `json:"orderProducts"`
 
 	Images []Image `json:"images"`
@@ -20,21 +21,23 @@ type Product struct {
 }
 
 type CreateProduct struct {
-	CategoryID  uint    `json:"categoryID"`
-	SupplierID  uint    `json:"supplierID"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
+	CategoryID       uint    `json:"categoryID"`
+	SupplierID       uint    `json:"supplierID"`
+	Code             string  `json:"code"`
+	Name             string  `json:"name"`
+	Description      string  `json:"description"`
+	Price            float64 `json:"price"`
+	MeasurementUnits string  `json:"measurementUnits"`
 }
 
 type UpdateProduct struct {
-	CategoryID  uint    `json:"categoryID"`
-	SupplierID  uint    `json:"supplierID"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
+	CategoryID       uint    `json:"categoryID"`
+	SupplierID       uint    `json:"supplierID"`
+	Code             string  `json:"code"`
+	Name             string  `json:"name"`
+	Description      string  `json:"description"`
+	Price            float64 `json:"price"`
+	MeasurementUnits string  `json:"measurementUnits"`
 }
 
 type UpdatePosition struct {
