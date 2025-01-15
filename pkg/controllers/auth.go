@@ -62,6 +62,9 @@ func Login(c echo.Context) error {
 		ID:    user.ID,
 		Email: user.Email,
 		Role:  user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt: jwt.NewNumericDate(time.Now()),
+		},
 	}
 
 	signedToken, err := auth.SignToken(claims, utils.GetEnvVar("JWT_LOGIN_SECRET"))
@@ -75,7 +78,8 @@ func Login(c echo.Context) error {
 	cookie.Value = signedToken
 	cookie.HttpOnly = true
 	cookie.Domain = utils.GetEnvVar("COOKIE_DOMAIN")
-	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
+	cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // Expires in 3 days
+	cookie.MaxAge = int(3 * 24 * time.Hour.Seconds())
 	c.SetCookie(cookie)
 
 	return c.JSON(http.StatusOK, user)
@@ -92,7 +96,7 @@ func Logout(c echo.Context) error {
 	cookie.Domain = utils.GetEnvVar("COOKIE_DOMAIN")
 	c.SetCookie(cookie)
 
-	return c.NoContent(http.StatusOK)
+	return c.NoContent(http.StatusResetContent)
 }
 
 // POST /api/v1/auth/signup //////////////////////////////////////////////////////
@@ -178,7 +182,8 @@ func Signup(c echo.Context) error {
 	cookie.Value = loginSignedToken
 	cookie.HttpOnly = true
 	cookie.Domain = utils.GetEnvVar("COOKIE_DOMAIN")
-	// cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // expires in 3 days
+	cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // Expires in 3 days
+	cookie.MaxAge = int(3 * 24 * time.Hour.Seconds())
 	c.SetCookie(cookie)
 
 	return c.JSON(http.StatusCreated, user)

@@ -3,10 +3,12 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/geras4323/ecommerce-backend/pkg/database"
 	"github.com/geras4323/ecommerce-backend/pkg/models"
 	"github.com/geras4323/ecommerce-backend/pkg/utils"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -52,7 +54,7 @@ func WithAuth(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cookie, err := c.Cookie("ec_session")
 		if err != nil {
-			return c.JSON(http.StatusForbidden, utils.SCTMake(AuthMiddlewareErrors["NoCookie"], err.Error()))
+			return c.JSON(http.StatusForbidden, utils.SCTMake(AuthMiddlewareErrors["NoCookie"], err.Error())) // If cookie expires, returns here "El usuario no está logueado"
 		}
 
 		userClaims := &JwtLoginClaims{}
@@ -68,6 +70,32 @@ func WithAuth(next echo.HandlerFunc) echo.HandlerFunc {
 				return c.JSON(http.StatusUnauthorized, utils.SCTMake("Email o contraseña inválidos", err.Error()))
 			}
 			return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
+		}
+
+		if time.Now().After(userClaims.IssuedAt.Time.Add(24 * time.Hour)) { // Regenerate session token if 1h has passed
+			claims := JwtLoginClaims{
+				ID:    user.ID,
+				Email: user.Email,
+				Role:  user.Role,
+				RegisteredClaims: jwt.RegisteredClaims{
+					IssuedAt: jwt.NewNumericDate(time.Now()),
+				},
+			}
+
+			signedToken, err := SignToken(claims, utils.GetEnvVar("JWT_LOGIN_SECRET"))
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
+			}
+
+			cookie := new(http.Cookie)
+			cookie.Name = "ec_session"
+			cookie.Path = "/"
+			cookie.Value = signedToken
+			cookie.HttpOnly = true
+			cookie.Domain = utils.GetEnvVar("COOKIE_DOMAIN")
+			cookie.Expires = time.Now().Add(3 * 24 * time.Hour) // Expires in 3 days
+			cookie.MaxAge = int(3 * 24 * time.Hour.Seconds())
+			c.SetCookie(cookie)
 		}
 
 		authContext := &AuthContext{
