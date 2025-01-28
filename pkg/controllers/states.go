@@ -127,3 +127,46 @@ func UpdateMPPayments(c echo.Context) error {
 
 	return c.NoContent(http.StatusOK)
 }
+
+// GET /api/v1/states/units ////////////////////////////////////////////////////////////////////
+func GetUnits(c echo.Context) error {
+	var unitsState models.State
+
+	if err := database.Gorm.Where("name = ?", "units").First(&unitsState).Error; err != nil {
+		newState, err := SetState(models.State{
+			Name:   "units",
+			Active: false,
+			From:   null.Time{},
+			To:     null.Time{},
+		})
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, err)
+		}
+		return c.JSON(http.StatusOK, newState)
+	}
+
+	return c.JSON(http.StatusOK, unitsState)
+}
+
+// PATCH /api/v1/states/units ////////////////////////////////////////////////////////////////////
+func UpdateUnits(c echo.Context) error {
+	body := models.UpdateState{}
+	c.Bind(&body)
+
+	oldState := models.State{}
+	if err := database.Gorm.Where("name = ?", "units").First(&oldState).Error; err != nil {
+		return c.JSON(http.StatusNotFound, utils.SCTMake(StateErrors[utils.NotFound], err.Error()))
+	}
+
+	if body.Active.Valid {
+		oldState.Active = body.Active.Bool
+		oldState.From = null.Time{}
+		oldState.To = null.Time{}
+	}
+
+	if err := database.Gorm.Where("name = ?", "units").Save(&oldState).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(StateErrors[utils.Update], err.Error()))
+	}
+
+	return c.NoContent(http.StatusOK)
+}

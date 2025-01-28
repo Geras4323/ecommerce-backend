@@ -11,4 +11,7 @@ func States(g *echo.Group) {
 
 	g.GET("/mercadopago", controllers.GetMPPayments)
 	g.PATCH("/mercadopago", controllers.UpdateMPPayments)
+
+	g.GET("/units", controllers.GetUnits)
+	g.PATCH("/units", controllers.UpdateUnits)
 }

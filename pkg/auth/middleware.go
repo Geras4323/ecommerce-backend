@@ -24,6 +24,35 @@ type AuthContext struct {
 	User *models.User
 }
 
+type StateContext struct {
+	echo.Context
+	State *models.State
+}
+
+func CheckState(s string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(baseContext echo.Context) error {
+			c := baseContext.(*AuthContext)
+
+			var state models.State
+			if err := database.Gorm.Where("name = ?", s).Find(&state).Error; err != nil {
+				return c.JSON(http.StatusInternalServerError, utils.SCTMake(utils.CommonErrors[utils.Internal], err.Error()))
+			}
+
+			stateContext := &StateContext{
+				Context: c,
+				State:   &state,
+			}
+
+			if err := next(stateContext); err != nil {
+				return err
+			}
+
+			return nil
+		}
+	}
+}
+
 func CheckRole(r ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(baseContext echo.Context) error {
