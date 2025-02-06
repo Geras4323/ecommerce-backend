@@ -56,6 +56,7 @@ func CrerateCartItem(baseContext echo.Context) error {
 		UserID:    c.User.ID,
 		ProductID: body.ProductID,
 		Quantity:  body.Quantity,
+		Unit:      body.Unit,
 	}
 
 	if err := database.Gorm.Create(&cartItem).Error; err != nil {

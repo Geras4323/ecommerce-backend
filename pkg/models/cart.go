@@ -3,7 +3,8 @@ package models
 type CartItem struct {
 	Model
 
-	Quantity uint `json:"quantity"`
+	Quantity uint   `json:"quantity"`
+	Unit     string `json:"unit"`
 
 	UserID uint `json:"userID"`
 	User   User `json:"-" gorm:"foreignKey:UserID"`
@@ -13,9 +14,9 @@ type CartItem struct {
 }
 
 type CreateCartItem struct {
-	Quantity uint `json:"quantity"`
-	// UserID    uint `json:"userID"`
-	ProductID uint `json:"productID"`
+	Quantity  uint   `json:"quantity"`
+	Unit      string `json:"unit"`
+	ProductID uint   `json:"productID"`
 }
 
 type UpdateCartItem struct {

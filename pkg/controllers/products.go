@@ -27,7 +27,7 @@ var ProductErrors = map[string]string{
 func GetProducts(c echo.Context) error {
 	showAll := c.QueryParam("showAll")
 
-	query := database.Gorm.Preload("Images", func(db *gorm.DB) *gorm.DB {
+	query := database.Gorm.Preload("Units").Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("position ASC")
 	}).Order("position ASC")
 
@@ -48,7 +48,7 @@ func GetProduct(c echo.Context) error {
 	productID := c.Param("id")
 
 	var product models.Product
-	if err := database.Gorm.Preload("Images", func(db *gorm.DB) *gorm.DB {
+	if err := database.Gorm.Preload("Units").Preload("Images", func(db *gorm.DB) *gorm.DB {
 		return db.Order("position ASC")
 	}).First(&product, productID).Error; err != nil {
 		return c.JSON(http.StatusNotFound, utils.SCTMake(ProductErrors[utils.Internal], err.Error()))
@@ -88,20 +88,35 @@ func CreateProduct(c echo.Context) error {
 	c.Bind(&body)
 
 	product := models.Product{
-		CategoryID:       body.CategoryID,
-		SupplierID:       body.SupplierID,
-		Code:             body.Code,
-		Name:             body.Name,
-		Description:      body.Description,
-		Price:            body.Price,
-		MeasurementUnits: body.MeasurementUnits,
+		CategoryID:  body.CategoryID,
+		SupplierID:  body.SupplierID,
+		Code:        body.Code,
+		Name:        body.Name,
+		Description: body.Description,
+		Price:       body.Price,
 	}
 
 	if err := database.Gorm.Create(&product).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
 	}
 
-	return c.JSON(http.StatusCreated, product)
+	units := make([]models.Unit, 0)
+	for _, u := range body.Units {
+		units = append(units, models.Unit{
+			Unit:      u.Unit,
+			Price:     u.Price,
+			ProductID: product.ID,
+		})
+	}
+
+	fmt.Println(units)
+
+	if err := database.Gorm.Create(&units).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
+	}
+
+	return c.JSON(http.StatusOK, "")
+	// return c.JSON(http.StatusCreated, product)
 }
 
 // POST /api/v1/products/:id/images
@@ -237,15 +252,14 @@ func UpdateProduct(c echo.Context) error {
 	// }
 	if productInSomeOrder {
 		newProduct := models.Product{
-			CategoryID:       newData.CategoryID,
-			SupplierID:       newData.SupplierID,
-			Code:             newData.Code,
-			Name:             newData.Name,
-			Description:      newData.Description,
-			Price:            newData.Price,
-			Position:         oldProduct.Position,
-			Listed:           true,
-			MeasurementUnits: newData.MeasurementUnits,
+			CategoryID:  newData.CategoryID,
+			SupplierID:  newData.SupplierID,
+			Code:        newData.Code,
+			Name:        newData.Name,
+			Description: newData.Description,
+			Price:       newData.Price,
+			Position:    oldProduct.Position,
+			Listed:      true,
 		}
 
 		if err := database.Gorm.Create(&newProduct).Error; err != nil {

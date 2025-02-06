@@ -3,13 +3,12 @@ package models
 type Product struct {
 	Model
 
-	Code             string  `json:"code"`
-	Name             string  `json:"name"`
-	Description      string  `json:"description"`
-	Price            float64 `json:"price"`
-	Position         uint    `json:"position"`
-	Listed           bool    `json:"listed" gorm:"default:1"`
-	MeasurementUnits string  `json:"measurementUnits"`
+	Code        string  `json:"code"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	Position    uint    `json:"position"`
+	Listed      bool    `json:"listed" gorm:"default:1"`
 	// OrderProducts []OrderProduct `json:"orderProducts"`
 
 	Images []Image `json:"images"`
@@ -18,26 +17,28 @@ type Product struct {
 	Category   Category `json:"-" gorm:"foreignKey:CategoryID"`
 
 	SupplierID uint `json:"supplierID"`
+
+	Units []Unit `json:"units"`
 }
 
 type CreateProduct struct {
-	CategoryID       uint    `json:"categoryID"`
-	SupplierID       uint    `json:"supplierID"`
-	Code             string  `json:"code"`
-	Name             string  `json:"name"`
-	Description      string  `json:"description"`
-	Price            float64 `json:"price"`
-	MeasurementUnits string  `json:"measurementUnits"`
+	CategoryID  uint    `json:"categoryID"`
+	SupplierID  uint    `json:"supplierID"`
+	Code        string  `json:"code"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	Units       []Unit  `json:"units"`
 }
 
 type UpdateProduct struct {
-	CategoryID       uint    `json:"categoryID"`
-	SupplierID       uint    `json:"supplierID"`
-	Code             string  `json:"code"`
-	Name             string  `json:"name"`
-	Description      string  `json:"description"`
-	Price            float64 `json:"price"`
-	MeasurementUnits string  `json:"measurementUnits"`
+	CategoryID  uint    `json:"categoryID"`
+	SupplierID  uint    `json:"supplierID"`
+	Code        string  `json:"code"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
+	Units       []Unit  `json:"units"`
 }
 
 type UpdatePosition struct {
