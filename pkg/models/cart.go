@@ -3,8 +3,10 @@ package models
 type CartItem struct {
 	Model
 
-	Quantity uint   `json:"quantity"`
-	Unit     string `json:"unit"`
+	Quantity uint `json:"quantity"`
+
+	UnitID uint `json:"-"`
+	Unit   Unit `json:"unit" gorm:"foreignKey:UnitID"`
 
 	UserID uint `json:"userID"`
 	User   User `json:"-" gorm:"foreignKey:UserID"`

@@ -23,6 +23,15 @@ var ProductErrors = map[string]string{
 	"Delete":   "Error al eliminar producto",
 }
 
+var UnitsErrors = map[string]string{
+	"Internal": "Ocurrió un error durante la carga de las unidades",
+
+	"NotFound": "Unidad no encontrada",
+	"Create":   "Error al crear unidad",
+	"Update":   "Error al actualizar unidad",
+	"Delete":   "Error al eliminar unidad",
+}
+
 // GET /api/v1/products //////////////////////////////////////////////////////
 func GetProducts(c echo.Context) error {
 	showAll := c.QueryParam("showAll")

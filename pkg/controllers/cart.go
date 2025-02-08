@@ -30,7 +30,7 @@ func GetCartItems(baseContext echo.Context) error {
 	}
 
 	cartItems := make([]models.CartItem, 0)
-	if err := database.Gorm.Where("user_id = ?", c.User.ID).Find(&cartItems).Error; err != nil {
+	if err := database.Gorm.Where("user_id = ?", c.User.ID).Preload("Unit").Find(&cartItems).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, utils.SCTMake(CartErrors[utils.Internal], err.Error()))
 	}
 
@@ -52,11 +52,16 @@ func CrerateCartItem(baseContext echo.Context) error {
 		return c.JSON(http.StatusNotFound, utils.SCTMake(ProductErrors[utils.NotFound], err.Error()))
 	}
 
+	var unit models.Unit
+	if err := database.Gorm.Where("product_id = ? AND unit = ?", body.ProductID, body.Unit).First(&unit).Error; err != nil {
+		return c.JSON(http.StatusNotFound, utils.SCTMake(UnitsErrors[utils.NotFound], err.Error()))
+	}
+
 	cartItem := models.CartItem{
 		UserID:    c.User.ID,
 		ProductID: body.ProductID,
 		Quantity:  body.Quantity,
-		Unit:      body.Unit,
+		UnitID:    unit.ID,
 	}
 
 	if err := database.Gorm.Create(&cartItem).Error; err != nil {
