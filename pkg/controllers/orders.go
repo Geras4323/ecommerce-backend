@@ -98,26 +98,12 @@ func CreateOrder(baseContext echo.Context) error {
 	}
 
 	emailItems := make([]map[string]interface{}, len(items))
-
+	orderProducts := make([]models.OrderProduct, len(items))
 	var total float64 = 0
-	for i, item := range items {
-		var prod models.Product
-		if err := database.Gorm.First(&prod, item.ProductID).Error; err != nil {
-			return c.JSON(http.StatusNotFound, utils.SCTMake(fmt.Sprintf("Producto %d no encontrado", item.ProductID), err.Error()))
-		}
-		total += float64(item.Quantity) * prod.Price
-
-		emailItems[i] = map[string]interface{}{
-			"article":  prod.Name,
-			"quantity": item.Quantity,
-			"price":    math.Round(prod.Price*100) / 100,
-			"total":    math.Round(float64(item.Quantity)*prod.Price*100) / 100,
-		}
-	}
 
 	order := models.Order{
 		UserID: uint(c.User.ID),
-		Total:  math.Round(total*100) / 100,
+		Total:  0,
 	}
 
 	// BEGIN TRANSACTION
@@ -126,14 +112,41 @@ func CreateOrder(baseContext echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, utils.SCTMake(OrderErrors[utils.Create], err.Error()))
 		}
 
-		for _, i := range items {
-			var item models.OrderProduct
-			item.OrderID = order.ID
-			item.ProductID = i.ProductID
-			item.Quantity = i.Quantity
-			if err := tx.Create(&item).Error; err != nil {
-				return c.JSON(http.StatusInternalServerError, utils.SCTMake(fmt.Sprintf("Error al agregar producto %d a la orden", item.ID), err.Error()))
+		for i, item := range items {
+			var prod models.Product
+			var unit models.Unit
+			if err := database.Gorm.First(&prod, item.ProductID).Error; err != nil {
+				return c.JSON(http.StatusNotFound, utils.SCTMake(fmt.Sprintf("Producto %d no encontrado", item.ProductID), err.Error()))
 			}
+			if err := database.Gorm.First(&unit, item.UnitID).Error; err != nil {
+				return c.JSON(http.StatusNotFound, utils.SCTMake(fmt.Sprintf("Unidad %d no encontrada", item.UnitID), err.Error()))
+			}
+
+			total += float64(item.Quantity) * unit.Price
+
+			emailItems[i] = map[string]interface{}{
+				"article":  prod.Name,
+				"quantity": item.Quantity,
+				"unit":     unit.Unit,
+				"price":    math.Round(unit.Price*100) / 100,
+				"total":    math.Round(float64(item.Quantity)*unit.Price*100) / 100,
+			}
+
+			orderProduct := models.OrderProduct{
+				OrderID:  order.ID,
+				Product:  prod,
+				Unit:     unit,
+				Quantity: item.Quantity,
+			}
+
+			orderProducts = append(orderProducts, orderProduct)
+			if err := tx.Create(&orderProduct).Error; err != nil {
+				return c.JSON(http.StatusInternalServerError, utils.SCTMake(fmt.Sprintf("Error al agregar producto %d a la orden", orderProduct.ID), err.Error()))
+			}
+		}
+
+		if err := tx.Model(&models.Order{}).Where("id = ?", order.ID).Update("total", total).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(AuthErrors[utils.Update], err.Error()))
 		}
 
 		return nil
@@ -173,12 +186,13 @@ func CreateOrder(baseContext echo.Context) error {
 		},
 	}
 
-	_, err := cloud.SendMail(messagesInfo)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, utils.SCTMake(utils.CommonErrors[utils.Email], err.Error()))
-	}
+	_ = messagesInfo
+	// _, err := cloud.SendMail(messagesInfo)
+	// if err != nil {
+	// 	c.JSON(http.StatusBadGateway, utils.SCTMake(utils.CommonErrors[utils.Email], err.Error()))
+	// }
 
-	// order.OrderProducts = append(order.OrderProducts, items...)
+	order.OrderProducts = append(order.OrderProducts, orderProducts...)
 	return c.JSON(http.StatusCreated, order)
 }
 
