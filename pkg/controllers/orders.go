@@ -71,7 +71,11 @@ func GetOrder(baseContext echo.Context) error {
 	var order models.Order
 	if err := database.Gorm.Preload("Payments", func(db *gorm.DB) *gorm.DB {
 		return db.Where("status = 'accepted'").Order("created_at DESC")
-	}).Preload("User").Preload("OrderProducts.Product.Images").First(&order, orderID).Error; err != nil {
+	}).Preload("User").
+		Preload("OrderProducts.Product.Images").
+		Preload("OrderProducts.Unit").
+		Preload("OrderProducts.Product.Units").
+		First(&order, orderID).Error; err != nil {
 		return c.JSON(http.StatusNotFound, utils.SCTMake(OrderErrors[utils.NotFound], err.Error()))
 	}
 
