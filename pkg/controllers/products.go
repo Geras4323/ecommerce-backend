@@ -118,8 +118,6 @@ func CreateProduct(c echo.Context) error {
 		})
 	}
 
-	fmt.Println(units)
-
 	if err := database.Gorm.Create(&units).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
 	}
@@ -259,7 +257,9 @@ func UpdateProduct(c echo.Context) error {
 	// 		return txError
 	// 	}
 	// }
+
 	if productInSomeOrder {
+		// Create new product version
 		newProduct := models.Product{
 			CategoryID:  newData.CategoryID,
 			SupplierID:  newData.SupplierID,
@@ -272,6 +272,20 @@ func UpdateProduct(c echo.Context) error {
 		}
 
 		if err := database.Gorm.Create(&newProduct).Error; err != nil {
+			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
+		}
+
+		// Assign its units
+		units := make([]models.Unit, 0)
+		for _, u := range newData.Units {
+			units = append(units, models.Unit{
+				Unit:      u.Unit,
+				Price:     u.Price,
+				ProductID: newProduct.ID,
+			})
+		}
+
+		if err := database.Gorm.Create(&units).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
 		}
 
@@ -294,7 +308,7 @@ func UpdateProduct(c echo.Context) error {
 					return c.JSON(http.StatusConflict, utils.SCTMake(utils.CommonErrors[utils.FileSave], err.Error()))
 				}
 			}
-			// Reasing to new product
+			// Reasign to new product
 			images[i].ProductID = newProduct.ID
 			if err := database.Gorm.Save(&images[i]).Error; err != nil {
 				return c.JSON(http.StatusConflict, utils.SCTMake(utils.CommonErrors[utils.FileSave], err.Error()))
@@ -316,13 +330,14 @@ func UpdateProduct(c echo.Context) error {
 		}
 
 		// Hide old product
-		oldProduct.Listed = false
-		if err := database.Gorm.Where("id = ?", productID).Save(&oldProduct).Error; err != nil {
+		if err := database.Gorm.Model(&models.Product{}).Where("id = ?", productID).Update("listed", false).Error; err != nil {
 			return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Update], err.Error()))
 		}
 
 		return c.JSON(http.StatusOK, newProduct)
 	}
+
+	// SI ESTA EN EL CART Y SE CAMBIÓ ALGUNA UNIDAD, SACARLO
 
 	// Update old version
 	oldProduct.Code = newData.Code
@@ -334,6 +349,24 @@ func UpdateProduct(c echo.Context) error {
 
 	if err := database.Gorm.Where("id = ?", productID).Save(&oldProduct).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Update], err.Error()))
+	}
+
+	// Renew Units (remove old, create new with same ProductID)
+	if err := database.Gorm.Unscoped().Where("product_id = ?", productID).Delete(&models.Unit{}).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(UnitsErrors[utils.Delete], err.Error()))
+	}
+
+	units := make([]models.Unit, 0)
+	for _, u := range newData.Units {
+		units = append(units, models.Unit{
+			Unit:      u.Unit,
+			Price:     u.Price,
+			ProductID: oldProduct.ID,
+		})
+	}
+
+	if err := database.Gorm.Create(&units).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, utils.SCTMake(ProductErrors[utils.Create], err.Error()))
 	}
 
 	return c.JSON(http.StatusOK, oldProduct)
